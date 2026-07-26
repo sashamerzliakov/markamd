@@ -94,6 +94,7 @@ export {
   writeMarkdown,
   pathExists,
   isDirectoryPath,
+  isHtmlPath,
   isMarkdownPath,
   isPlainTextEditPath,
   isSupportedTextPath,

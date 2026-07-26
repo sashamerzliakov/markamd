@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { EditorView } from "@codemirror/view";
 import { Breadcrumb, StatusBar, TitleBar, type VimMode } from "@/components/chrome";
-import { Editor, FileView, OpenTabs, Preview, ReadingFind, Splitter, TocPanel } from "@/components/editor";
+import { Editor, FileView, HtmlPreview, OpenTabs, Preview, ReadingFind, Splitter, TocPanel } from "@/components/editor";
 import { ContextMenu, Sidebar, type ContextMenuItem } from "@/components/files";
 import { AboutOverlay, CommandPalette, DropOverlay, HelpOverlay, Toast, WelcomeOverlay } from "@/components/overlays";
 import { TooltipRoot } from "@/components/primitives";
@@ -42,6 +42,7 @@ import {
   fileViewerKindForPath,
   isDirectoryPath,
   isFilesystemRoot,
+  isHtmlPath,
   isPlainTextEditPath,
   isSupportedTextPath,
   markdownInsertion,
@@ -454,6 +455,8 @@ export function App() {
   // In-app file viewer (images / pdf / html) — such files open as viewer tabs;
   // when the active tab's path is viewable, FileView renders instead of the editor.
   const activeViewerKind = activePath ? fileViewerKindForPath(activePath) : null;
+  // HTML files edit like markdown but preview through a sandboxed iframe.
+  const activeIsHtml = activePath ? isHtmlPath(activePath) : false;
 
   // Plain-text fallback files cannot render in preview, so they temporarily force editor-only
   // without changing the user's persisted default view mode.
@@ -1169,7 +1172,11 @@ export function App() {
       <main className="mdv-shell">
         {readingMode ? (
           <>
-            <Preview source={debouncedPreview} filePath={activePath} onOpenPreviewWindow={openPreviewWindow} />
+            {activeIsHtml ? (
+              <HtmlPreview source={debouncedPreview} />
+            ) : (
+              <Preview source={debouncedPreview} filePath={activePath} onOpenPreviewWindow={openPreviewWindow} />
+            )}
             <TocPanel
               open={tocVisible}
               scope={proseEl}
@@ -1238,12 +1245,22 @@ export function App() {
                 </div>
               ) : previewOnly ? (
                 <div className="mdv-shell__preview-solo">
-                  <Preview source={debouncedPreview} filePath={activePath} onOpenPreviewWindow={openPreviewWindow} />
+                  {activeIsHtml ? (
+                    <HtmlPreview source={debouncedPreview} />
+                  ) : (
+                    <Preview source={debouncedPreview} filePath={activePath} onOpenPreviewWindow={openPreviewWindow} />
+                  )}
                 </div>
               ) : (
                 <Splitter
                   left={<Editor value={source} onChange={setSource} vimOn={vimOn} onVimMode={setVimMode} viewRef={editorViewRef} />}
-                  right={<Preview source={debouncedPreview} filePath={activePath} onOpenPreviewWindow={openPreviewWindow} />}
+                  right={
+                    activeIsHtml ? (
+                      <HtmlPreview source={debouncedPreview} />
+                    ) : (
+                      <Preview source={debouncedPreview} filePath={activePath} onOpenPreviewWindow={openPreviewWindow} />
+                    )
+                  }
                 />
               )}
             </div>

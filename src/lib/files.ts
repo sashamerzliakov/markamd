@@ -45,14 +45,21 @@ export function isMarkdownPath(path: string): boolean {
 }
 
 // Plain-text code files that open directly in the editor (no preview rendering).
-const PLAIN_TEXT_EDIT_EXT = /\.(js|mjs|cjs|css|py)$/i;
+const PLAIN_TEXT_EDIT_EXT = /\.(js|mjs|cjs|css|py|json|log)$/i;
 
 export function isPlainTextEditPath(path: string): boolean {
   return PLAIN_TEXT_EDIT_EXT.test(path);
 }
 
+// HTML opens in the editor with a live rendered preview pane (like markdown).
+const HTML_EXT = /\.(html|htm)$/i;
+
+export function isHtmlPath(path: string): boolean {
+  return HTML_EXT.test(path);
+}
+
 export function isSupportedTextPath(path: string): boolean {
-  return isMarkdownPath(path) || isCsvPath(path) || isPlainTextEditPath(path);
+  return isMarkdownPath(path) || isCsvPath(path) || isPlainTextEditPath(path) || isHtmlPath(path);
 }
 
 /** True when the path is an existing directory (stat-based; false on any error). */
@@ -208,7 +215,7 @@ async function checkBinaryAndSize(path: string): Promise<FileValidation> {
 /** Quick guard before reading a supported plain-text file. Catches PDFs, images, oversized files. */
 export async function validateSupportedTextFile(path: string): Promise<FileValidation> {
   if (!isSupportedTextPath(path)) {
-    return { ok: false, reason: `${basename(path)} isn't supported. marka.md opens .md / .markdown / .mdx / .csv / .js / .css / .py` };
+    return { ok: false, reason: `${basename(path)} isn't supported. marka.md opens .md / .markdown / .mdx / .csv / .html / .js / .css / .py / .json / .log` };
   }
   return checkBinaryAndSize(path);
 }

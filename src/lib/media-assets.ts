@@ -41,15 +41,15 @@ export function markdownMediaAssetForExtension(ext: string): MarkdownMediaAsset 
   return { kind: "image", mime: IMAGE_MIME[normalized] ?? "image/png" };
 }
 
-export type FileViewerKind = "image" | "pdf" | "html";
+export type FileViewerKind = "image" | "pdf";
 
-/** Viewer kind for files rendered by the in-app file viewer, or null when the path isn't viewable. */
+/** Viewer kind for files rendered by the in-app file viewer, or null when the path isn't viewable.
+ *  HTML is NOT a viewer kind — it opens editable with a live preview pane. */
 export function fileViewerKindForPath(path: string): FileViewerKind | null {
   if (isImagePath(path)) return "image";
   const dot = path.lastIndexOf(".");
   const ext = dot >= 0 ? path.slice(dot + 1).toLowerCase() : "";
   if (ext === "pdf") return "pdf";
-  if (ext === "html" || ext === "htm") return "html";
   return null;
 }
 

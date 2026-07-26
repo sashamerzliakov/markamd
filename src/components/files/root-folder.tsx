@@ -46,7 +46,8 @@ export function RootFolder({
   onCancelNew,
   treeVersion = 0,
 }: RootFolderProps) {
-  const [open, setOpen] = useState(true);
+  // collapsed by default — with many roots an all-expanded sidebar is unnavigable at startup
+  const [open, setOpen] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const name = basename(path);
 

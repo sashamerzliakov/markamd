@@ -1,5 +1,6 @@
 export { Editor } from "./editor";
 export { FileView } from "./file-view";
+export { HtmlPreview } from "./html-preview";
 export { CsvPreview } from "./csv-preview";
 export { OpenTabs } from "./open-tabs";
 export { Preview } from "./preview";

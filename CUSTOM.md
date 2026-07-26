@@ -8,8 +8,10 @@ Custom enhancements live on the `custom` branch; `upstream` remote tracks the or
 | Feature | Shortcut | Notes |
 |---|---|---|
 | View cycling | ⌘⇧B | Cycles the workspace panes: split → editor-only → preview-only → split. Sidebar unaffected (⌘B still toggles it). Adds a `"preview"` view mode alongside upstream's split/reading/editor. |
-| In-app file viewer | click an image / PDF / HTML file in the sidebar | Opens as a read-only viewer **tab** (current tab is preserved); Esc or × closes the tab. PDFs use WKWebView's native viewer; HTML runs in a sandboxed iframe (scripts run, relative assets don't resolve). |
-| Editable code files | click a .js / .mjs / .cjs / .css / .py file | Opens directly in the editor as plain text (editor-only — no markdown preview), with normal save (⌘S). |
+| In-app file viewer | click an image / PDF in the sidebar | Opens as a read-only viewer **tab** (current tab is preserved); Esc or × closes the tab. PDFs use WKWebView's native viewer. |
+| Editable HTML with live preview | click a .html / .htm file | Edits like markdown: editor left, rendered preview right (sandboxed iframe — scripts run, relative assets don't resolve). ⌘⇧B cycling and reading mode work on it. |
+| Editable code files | click a .js / .mjs / .cjs / .css / .py / .json / .log file | Opens directly in the editor as plain text (editor-only — no markdown preview), with normal save (⌘S). |
+| Collapsed explorer at startup | — | Workspace root folders start collapsed instead of expanded (subfolders always did). |
 | Folder favourites | star on folder rows, or drag a folder into Favourites | Folders can be favourited like files; clicking a favourite folder opens it as a workspace root in the sidebar. |
 | App-wide zoom | ⌘= / ⌘- / ⌘0 | Webview-level zoom (everything scales), 50%–300% in 10% steps, persisted across restarts. |
 
