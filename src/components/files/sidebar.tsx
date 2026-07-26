@@ -24,6 +24,8 @@ type SidebarProps = {
   stagedTokenLabel?: string;
   onToggleStage?: (path: string) => void;
   favorites?: readonly string[];
+  favoriteDirs?: ReadonlySet<string>;
+  onSelectFavoriteFolder?: (path: string) => void;
   onToggleFavorite?: (path: string) => void;
   onReorderFavorites?: (from: number, to: number) => void;
   onCopyContext?: () => void;
@@ -55,6 +57,8 @@ export function Sidebar({
   stagedTokenLabel = "0",
   onToggleStage,
   favorites = [],
+  favoriteDirs,
+  onSelectFavoriteFolder,
   onToggleFavorite,
   onReorderFavorites,
   onCopyContext,
@@ -258,6 +262,8 @@ export function Sidebar({
                   emptyLabel={t("sidebar.noFavorites")}
                   removeLabel={t("sidebar.unfavorite")}
                   onSelect={onSelectFile}
+                  dirPaths={favoriteDirs}
+                  onSelectFolder={onSelectFavoriteFolder}
                   onToggleFavorite={(p) => onToggleFavorite?.(p)}
                   onReorder={(from, to) => onReorderFavorites?.(from, to)}
                   onContextMenu={onContextMenu}

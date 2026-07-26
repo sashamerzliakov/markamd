@@ -55,6 +55,7 @@ export function FolderNode({
   const [open, setOpen] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
   const toggle = useCallback(() => setOpen((v) => !v), []);
+  const favorite = favoritePaths.includes(entry.path);
 
   // auto-open when a new entry is being created inside us
   useEffect(() => {
@@ -98,7 +99,7 @@ export function FolderNode({
       <button
         type="button"
         draggable
-        className={`mdv-tree__row mdv-tree__row--folder${isDropTarget ? " is-drop-target" : ""}`}
+        className={`mdv-tree__row mdv-tree__row--folder${isDropTarget ? " is-drop-target" : ""}${onToggleFavorite ? " has-fav" : ""}`}
         style={{ paddingLeft: `${8 + depth * 12}px` }}
         onClick={toggle}
         onContextMenu={onCtx}
@@ -116,6 +117,21 @@ export function FolderNode({
         </span>
         <span className="mdv-tree__name">{entry.name}</span>
       </button>
+      {onToggleFavorite ? (
+        <button
+          type="button"
+          className={`mdv-tree__fav mdv-tree__fav--folder${favorite ? " is-fav" : ""}`}
+          data-tooltip={favorite ? "remove from favorites" : "add to favorites"}
+          aria-label={favorite ? `remove ${entry.name} from favorites` : `add ${entry.name} to favorites`}
+          aria-pressed={favorite}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(entry.path);
+          }}
+        >
+          <Icon icon={Star} size={11} strokeWidth={1.8} />
+        </button>
+      ) : null}
       {open ? (
         <FileTree
           rootPath={entry.path}

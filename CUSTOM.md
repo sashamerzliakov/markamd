@@ -7,8 +7,10 @@ Custom enhancements live on the `custom` branch; `upstream` remote tracks the or
 
 | Feature | Shortcut | Notes |
 |---|---|---|
-| Preview-only mode | ⌘⇧B | Hides the markdown editor pane, leaving the preview (sidebar unaffected — ⌘B still toggles it). New `"preview"` view mode alongside upstream's split/reading/editor. |
-| In-app image viewer | click an image in the sidebar | Renders the image in place of the editor/preview panes. Esc or × closes it. |
+| View cycling | ⌘⇧B | Cycles the workspace panes: split → editor-only → preview-only → split. Sidebar unaffected (⌘B still toggles it). Adds a `"preview"` view mode alongside upstream's split/reading/editor. |
+| In-app file viewer | click an image / PDF / HTML file in the sidebar | Renders in place of the editor/preview panes; Esc or × closes it. PDFs use WKWebView's native viewer; HTML runs in a sandboxed iframe (scripts run, relative assets don't resolve). |
+| Editable code files | click a .js / .mjs / .cjs / .css / .py file | Opens directly in the editor as plain text (editor-only — no markdown preview), with normal save (⌘S). |
+| Folder favourites | star on folder rows, or drag a folder into Favourites | Folders can be favourited like files; clicking a favourite folder opens it as a workspace root in the sidebar. |
 | App-wide zoom | ⌘= / ⌘- / ⌘0 | Webview-level zoom (everything scales), 50%–300% in 10% steps, persisted across restarts. |
 
 ## Workflow
@@ -19,10 +21,11 @@ Custom enhancements live on the `custom` branch; `upstream` remote tracks the or
 
 ## Files touched by the customisations
 
-- `src/app.tsx` — view mode, zoom state, image-view state, shortcuts, render branches
-- `src/components/editor/image-view.tsx` — new component
-- `src/lib/media-assets.ts`, `src/lib/storage.ts`, `src/lib/index.ts` — helpers + storage key
-- `src/styles/editor/panes.css` — preview-solo + image-view styles
+- `src/app.tsx` — view modes + cycling, zoom state, file-viewer state, folder-favourite state, shortcuts, render branches
+- `src/components/editor/file-view.tsx` — new component (image / pdf / html viewer)
+- `src/components/files/folder-node.tsx`, `favorites.tsx`, `sidebar.tsx` — folder favourite star + folder rows in Favourites
+- `src/lib/media-assets.ts`, `src/lib/files.ts`, `src/lib/storage.ts`, `src/lib/index.ts` — viewer-kind + plain-text-edit + isDirectory helpers, storage key
+- `src/styles/editor/panes.css`, `src/styles/files/sidebar.css` — solo-pane, viewer, folder-star styles
 - `src-tauri/capabilities/default.json` — webview zoom permission
 
 Keeping the diff small and localised is deliberate — it keeps upstream merges low-conflict.

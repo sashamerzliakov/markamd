@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { EditorView } from "@codemirror/view";
 import { Breadcrumb, StatusBar, TitleBar, type VimMode } from "@/components/chrome";
-import { Editor, ImageView, OpenTabs, Preview, ReadingFind, Splitter, TocPanel } from "@/components/editor";
+import { Editor, FileView, OpenTabs, Preview, ReadingFind, Splitter, TocPanel } from "@/components/editor";
 import { ContextMenu, Sidebar, type ContextMenuItem } from "@/components/files";
 import { AboutOverlay, CommandPalette, DropOverlay, HelpOverlay, Toast, WelcomeOverlay } from "@/components/overlays";
 import { TooltipRoot } from "@/components/primitives";
@@ -39,8 +39,10 @@ import {
   getWritingDisplayVars,
   getContextBundleStats,
   getWhatsNewToastMessage,
+  fileViewerKindForPath,
+  isDirectoryPath,
   isFilesystemRoot,
-  isImagePath,
+  isPlainTextEditPath,
   isSupportedTextPath,
   markdownInsertion,
   normalizeProseFontFamily,
@@ -239,6 +241,27 @@ export function App() {
     );
   }, [setFavorites]);
 
+  // Favourites can be folders too — stat each favourite so the sidebar can
+  // render folder icons and route clicks to "open as workspace folder".
+  const [favoriteDirs, setFavoriteDirs] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const flags = await Promise.all(
+        favorites.map(async (path) => [path, await isDirectoryPath(path)] as const),
+      );
+      if (cancelled) return;
+      setFavoriteDirs(new Set(flags.filter(([, isDir]) => isDir).map(([path]) => path)));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [favorites]);
+
+  const openFavoriteFolder = useCallback((path: string) => {
+    setFolders((prev) => (prev.includes(path) ? prev : [...prev, path]));
+  }, [setFolders]);
+
   const reorderFavorites = useCallback((from: number, to: number) => {
     setFavorites((prev) => {
       if (from < 0 || from >= prev.length || to < 0 || to >= prev.length) return prev;
@@ -396,8 +419,14 @@ export function App() {
   const toggleEditorOnly = useCallback(() => {
     setViewMode((current) => (current === "editor" ? "split" : "editor"));
   }, [setViewMode]);
-  const togglePreviewOnly = useCallback(() => {
-    setViewMode((current) => (current === "preview" ? "split" : "preview"));
+  // ⌘⇧B cycles the workspace panes: split → editor-only → preview-only → split.
+  // Reading mode re-enters the cycle at editor-only.
+  const cycleViewMode = useCallback(() => {
+    setViewMode((current) => {
+      if (current === "split" || current === "reading") return "editor";
+      if (current === "editor") return "preview";
+      return "split";
+    });
   }, [setViewMode]);
 
   // App-wide zoom (⌘= / ⌘- / ⌘0), applied at the webview level so editor,
@@ -421,9 +450,9 @@ export function App() {
     [setZoomLevel],
   );
 
-  // In-app image viewer — set when an image file is selected in the sidebar;
-  // rendered in place of the editor/preview panes until closed.
-  const [imageViewPath, setImageViewPath] = useState<string | null>(null);
+  // In-app file viewer (images / pdf / html) — set when a viewable file is
+  // selected in the sidebar; rendered in place of the editor/preview panes.
+  const [viewerPath, setViewerPath] = useState<string | null>(null);
 
   // Plain-text fallback files cannot render in preview, so they temporarily force editor-only
   // without changing the user's persisted default view mode.
@@ -435,6 +464,9 @@ export function App() {
     const lower = activePath.toLowerCase();
     if (lower.endsWith(".md") || lower.endsWith(".markdown") || lower.endsWith(".mdx")) {
       setPlainTextEditorOnly(false);
+    } else if (isPlainTextEditPath(activePath)) {
+      // code files (js/css/py) are edit-only — the markdown preview is meaningless for them
+      setPlainTextEditorOnly(true);
     } else if (extPrefs.current.get(getExt(activePath)) === "text") {
       setPlainTextEditorOnly(true);
     } else {
@@ -938,7 +970,7 @@ export function App() {
       },
       "mod+shift+b": (e: KeyboardEvent) => {
         e.preventDefault();
-        togglePreviewOnly();
+        cycleViewMode();
       },
       "mod+=": (e: KeyboardEvent) => {
         e.preventDefault();
@@ -958,9 +990,9 @@ export function App() {
         setZoomLevel(1);
       },
       escape: (e: KeyboardEvent) => {
-        if (imageViewPath) {
+        if (viewerPath) {
           e.preventDefault();
-          setImageViewPath(null);
+          setViewerPath(null);
           return;
         }
         if (readingMode) {
@@ -1000,10 +1032,10 @@ export function App() {
       toggleReadingMode,
       exitReadingMode,
       toggleEditorOnly,
-      togglePreviewOnly,
+      cycleViewMode,
       zoomBy,
       setZoomLevel,
-      imageViewPath,
+      viewerPath,
     ],
   );
   useShortcuts(shortcuts);
@@ -1159,11 +1191,11 @@ export function App() {
               onAddFolder={handleOpenFolder}
               onCloseFolder={handleCloseFolder}
               onSelectFile={(path) => {
-                if (isImagePath(path)) {
-                  setImageViewPath(path);
+                if (fileViewerKindForPath(path)) {
+                  setViewerPath(path);
                   return;
                 }
-                setImageViewPath(null);
+                setViewerPath(null);
                 void loadFile(path);
               }}
               onMove={handleMove}
@@ -1172,6 +1204,8 @@ export function App() {
               stagedTokenLabel={stagedTokenLabel}
               onToggleStage={toggleStagedPath}
               favorites={favorites}
+              favoriteDirs={favoriteDirs}
+              onSelectFavoriteFolder={openFavoriteFolder}
               onToggleFavorite={toggleFavorite}
               onReorderFavorites={reorderFavorites}
               onCopyContext={() => void copyContextBundle()}
@@ -1193,8 +1227,8 @@ export function App() {
                 onReorder={reorderTabs}
                 onContextMenu={(e, path) => handleContextMenu(e, { path, name: basename(path), isDir: false })}
               />
-              {imageViewPath ? (
-                <ImageView path={imageViewPath} onClose={() => setImageViewPath(null)} />
+              {viewerPath ? (
+                <FileView path={viewerPath} onClose={() => setViewerPath(null)} />
               ) : editorOnly ? (
                 <div className="mdv-shell__editor-solo">
                   <Editor value={source} onChange={setSource} vimOn={vimOn} onVimMode={setVimMode} viewRef={editorViewRef} />

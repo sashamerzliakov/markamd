@@ -767,6 +767,30 @@
   opacity: 1;
 }
 
+/* folder favourite star — pin to the folder's own row (the item grows when
+   expanded), and only reveal when the folder row itself is hovered, not when
+   a descendant row inside the same item is */
+.mdv-tree__row--folder.has-fav {
+  padding-right: 30px;
+}
+
+.mdv-tree__fav--folder {
+  /* row is ~26px tall (4px padding + ~18px content); star is 18px */
+  top: 4px;
+  transform: none;
+}
+
+.mdv-tree__item:hover .mdv-tree__fav--folder {
+  opacity: 0;
+}
+
+.mdv-tree__row--folder:hover ~ .mdv-tree__fav--folder,
+.mdv-tree__fav--folder:hover,
+.mdv-tree__fav--folder:focus-visible,
+.mdv-tree__fav--folder.is-fav {
+  opacity: 1;
+}
+
 .mdv-tree__fav:hover {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);

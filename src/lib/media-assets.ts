@@ -41,6 +41,18 @@ export function markdownMediaAssetForExtension(ext: string): MarkdownMediaAsset 
   return { kind: "image", mime: IMAGE_MIME[normalized] ?? "image/png" };
 }
 
+export type FileViewerKind = "image" | "pdf" | "html";
+
+/** Viewer kind for files rendered by the in-app file viewer, or null when the path isn't viewable. */
+export function fileViewerKindForPath(path: string): FileViewerKind | null {
+  if (isImagePath(path)) return "image";
+  const dot = path.lastIndexOf(".");
+  const ext = dot >= 0 ? path.slice(dot + 1).toLowerCase() : "";
+  if (ext === "pdf") return "pdf";
+  if (ext === "html" || ext === "htm") return "html";
+  return null;
+}
+
 /** True when the path has a renderable image extension (used by the in-app image viewer). */
 export function isImagePath(path: string): boolean {
   const dot = path.lastIndexOf(".");

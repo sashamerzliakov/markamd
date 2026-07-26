@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, FileText, Star, Table2 } from "lucide-react";
+import { ChevronRight, FileText, Folder, Star, Table2 } from "lucide-react";
 import { Icon } from "@/components/primitives";
 import { basename, isCsvPath, type FileEntry } from "@/lib";
 
@@ -13,6 +13,9 @@ type FavoritesProps = {
   onToggleFavorite: (path: string) => void;
   onReorder: (from: number, to: number) => void;
   onContextMenu?: (e: React.MouseEvent, entry: FileEntry) => void;
+  /** Favourite paths known to be directories — rendered with a folder icon and routed to onSelectFolder. */
+  dirPaths?: ReadonlySet<string>;
+  onSelectFolder?: (path: string) => void;
 };
 
 export function Favorites({
@@ -25,6 +28,8 @@ export function Favorites({
   onToggleFavorite,
   onReorder,
   onContextMenu,
+  dirPaths,
+  onSelectFolder,
 }: FavoritesProps) {
   const [open, setOpen] = useState(true);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -83,11 +88,14 @@ export function Favorites({
                   draggable
                   className={`mdv-tree__row mdv-tree__row--file has-fav${activePath === path ? " is-active" : ""}`}
                   style={{ paddingLeft: "12px" }}
-                  onClick={() => onSelect(path)}
+                  onClick={() => {
+                    if (dirPaths?.has(path)) onSelectFolder?.(path);
+                    else onSelect(path);
+                  }}
                   onContextMenu={(e) => {
                     if (!onContextMenu) return;
                     e.preventDefault();
-                    onContextMenu(e, { path, name: basename(path), isDir: false });
+                    onContextMenu(e, { path, name: basename(path), isDir: dirPaths?.has(path) ?? false });
                   }}
                   title={path}
                   onDragStart={(e) => {
@@ -115,7 +123,11 @@ export function Favorites({
                   }}
                 >
                   <span className="mdv-tree__icon">
-                    <Icon icon={isCsvPath(path) ? Table2 : FileText} size={13} strokeWidth={1.5} />
+                    <Icon
+                      icon={dirPaths?.has(path) ? Folder : isCsvPath(path) ? Table2 : FileText}
+                      size={13}
+                      strokeWidth={1.5}
+                    />
                   </span>
                   <span className="mdv-tree__name">{basename(path)}</span>
                 </button>

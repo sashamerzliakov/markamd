@@ -1,5 +1,5 @@
 export { Editor } from "./editor";
-export { ImageView } from "./image-view";
+export { FileView } from "./file-view";
 export { CsvPreview } from "./csv-preview";
 export { OpenTabs } from "./open-tabs";
 export { Preview } from "./preview";

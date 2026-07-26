@@ -1,9 +1,11 @@
 export { renderMarkdown, ensureMarkdownReady } from "./markdown";
 export {
   extensionFromMarkdownAssetSrc,
+  fileViewerKindForPath,
   imageMimeForPath,
   isImagePath,
   markdownMediaAssetForExtension,
+  type FileViewerKind,
   type MarkdownMediaAsset,
   type MarkdownMediaKind,
 } from "./media-assets";
@@ -91,7 +93,9 @@ export {
   readMarkdown,
   writeMarkdown,
   pathExists,
+  isDirectoryPath,
   isMarkdownPath,
+  isPlainTextEditPath,
   isSupportedTextPath,
   basename,
   dirname,
