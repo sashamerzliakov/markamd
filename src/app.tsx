@@ -141,6 +141,7 @@ export function App() {
     externalConflict,
     setExternalConflict,
     loadFile,
+    openViewerTab,
     loadDemo,
     saveNow,
     saveAs: saveAsCore,
@@ -450,9 +451,9 @@ export function App() {
     [setZoomLevel],
   );
 
-  // In-app file viewer (images / pdf / html) — set when a viewable file is
-  // selected in the sidebar; rendered in place of the editor/preview panes.
-  const [viewerPath, setViewerPath] = useState<string | null>(null);
+  // In-app file viewer (images / pdf / html) — such files open as viewer tabs;
+  // when the active tab's path is viewable, FileView renders instead of the editor.
+  const activeViewerKind = activePath ? fileViewerKindForPath(activePath) : null;
 
   // Plain-text fallback files cannot render in preview, so they temporarily force editor-only
   // without changing the user's persisted default view mode.
@@ -826,15 +827,18 @@ export function App() {
 
     void listen<DragPayload>("tauri://drag-enter", (event) => {
       const paths = event.payload.paths ?? [];
-      setDragActive(paths.some((p) => isSupportedTextPath(p)));
+      setDragActive(paths.some((p) => isSupportedTextPath(p) || fileViewerKindForPath(p) !== null));
     }).then((ul) => { unlistenEnter = ul; });
 
     void listen<DragPayload>("tauri://drag-drop", (event) => {
       setDragActive(false);
       const paths = event.payload.paths ?? [];
       const firstSupported = paths.find((p) => isSupportedTextPath(p));
+      const firstViewable = paths.find((p) => fileViewerKindForPath(p) !== null);
       if (firstSupported) {
         void loadFile(firstSupported);
+      } else if (firstViewable) {
+        openViewerTab(firstViewable);
       } else if (paths.length > 0) {
         setLoadError({ message: t("app.dropMarkdownOnly") });
       }
@@ -849,7 +853,7 @@ export function App() {
       unlistenDrop?.();
       unlistenLeave?.();
     };
-  }, [loadFile, setLoadError, t]);
+  }, [loadFile, openViewerTab, setLoadError, t]);
 
   const handleCloseTab = useCallback((id: string) => {
     const tab = tabs.find((item) => item.id === id);
@@ -990,9 +994,9 @@ export function App() {
         setZoomLevel(1);
       },
       escape: (e: KeyboardEvent) => {
-        if (viewerPath) {
+        if (activeViewerKind) {
           e.preventDefault();
-          setViewerPath(null);
+          handleCloseTab(activeTabId);
           return;
         }
         if (readingMode) {
@@ -1035,7 +1039,7 @@ export function App() {
       cycleViewMode,
       zoomBy,
       setZoomLevel,
-      viewerPath,
+      activeViewerKind,
     ],
   );
   useShortcuts(shortcuts);
@@ -1192,10 +1196,9 @@ export function App() {
               onCloseFolder={handleCloseFolder}
               onSelectFile={(path) => {
                 if (fileViewerKindForPath(path)) {
-                  setViewerPath(path);
+                  openViewerTab(path);
                   return;
                 }
-                setViewerPath(null);
                 void loadFile(path);
               }}
               onMove={handleMove}
@@ -1227,8 +1230,8 @@ export function App() {
                 onReorder={reorderTabs}
                 onContextMenu={(e, path) => handleContextMenu(e, { path, name: basename(path), isDir: false })}
               />
-              {viewerPath ? (
-                <FileView path={viewerPath} onClose={() => setViewerPath(null)} />
+              {activeViewerKind && activePath ? (
+                <FileView path={activePath} onClose={() => handleCloseTab(activeTabId)} />
               ) : editorOnly ? (
                 <div className="mdv-shell__editor-solo">
                   <Editor value={source} onChange={setSource} vimOn={vimOn} onVimMode={setVimMode} viewRef={editorViewRef} />

@@ -60,6 +60,8 @@ type UseFileSessionResult = {
   /** Accept fresh content from disk (external-change reload, "discard mine"). */
   acceptExternalChange: (fresh: string) => void;
   loadFile: (path: string, options?: LoadFileOptions) => Promise<void>;
+  /** Open a non-text file (image / pdf / html) as a read-only viewer tab. */
+  openViewerTab: (path: string) => void;
   loadDemo: () => void;
   saveNow: (path: string, content: string) => Promise<void>;
   /** Picks save location + writes. Returns the chosen path (or null if cancelled). */
@@ -288,6 +290,31 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     ],
   );
 
+  // Open a non-text file (image / pdf / html) as a viewer tab. The tab carries
+  // empty source/savedContent so it can never be dirty; the app shell renders
+  // a FileView for it instead of the editor, keyed off the tab's path.
+  const openViewerTab = useCallback((path: string) => {
+    const existing = snapshotActiveTab(tabs).find((tab) => tab.path === path);
+    if (existing) {
+      if (activePathRef.current !== path) switchTab(existing.id);
+      return;
+    }
+    const tab: FileTab = {
+      id: makeTabId(),
+      path,
+      title: titleForPath(path),
+      source: "",
+      savedContent: "",
+      waitMarkers: [],
+    };
+    setSource("");
+    setSavedContent("");
+    setActivePath(path);
+    setTabs((prev) => [...snapshotActiveTab(prev), tab]);
+    setActiveTabId(tab.id);
+    setSaveStatus("idle");
+  }, [makeTabId, setActivePath, snapshotActiveTab, switchTab, tabs, titleForPath]);
+
   const loadDemo = useCallback(() => {
     setSource(DEMO_MARKDOWN);
     setSavedContent(DEMO_MARKDOWN);
@@ -477,6 +504,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     setExternalConflict,
     acceptExternalChange,
     loadFile,
+    openViewerTab,
     loadDemo,
     saveNow,
     saveAs,
