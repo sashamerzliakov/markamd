@@ -25,6 +25,20 @@ a cross-platform (**macOS · Windows · Linux**) markdown editor specialized for
 
 works with claude, chatgpt, gemini, local agents, and anything that reads plain markdown.
 
+## about this fork
+
+this is [Sasha Merzliakov](https://github.com/sashamerzliakov)'s fork of [mattenarle10/markamd](https://github.com/mattenarle10/markamd) — all credit for the app itself to [Matt Enarle](https://github.com/mattenarle10). the `custom` branch adds, on top of upstream:
+
+- **⌘⇧B view cycling** — split → editor-only → preview-only → split
+- **in-app file viewer** — images and PDFs open as read-only tabs
+- **editable html with live preview** — edit left, rendered pane right, like markdown
+- **more editable file types** — js / css / py / json / log open straight into the editor
+- **folder favourites** — star a folder, click it to open as a workspace root
+- **app-wide zoom** — ⌘= / ⌘- / ⌘0, persisted
+- **perf: non-scanning folder watchers** — fixes a startup / add-folder freeze on large folders (being proposed upstream)
+
+details and the fork workflow live in [CUSTOM.md](./CUSTOM.md). generalisable pieces get PRed upstream; the personal ones stay here.
+
 ## what you get
 
 | area | details |
