@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { EditorView } from "@codemirror/view";
 import { Breadcrumb, StatusBar, TitleBar, type VimMode } from "@/components/chrome";
-import { Editor, OpenTabs, Preview, ReadingFind, Splitter, TocPanel } from "@/components/editor";
+import { Editor, ImageView, OpenTabs, Preview, ReadingFind, Splitter, TocPanel } from "@/components/editor";
 import { ContextMenu, Sidebar, type ContextMenuItem } from "@/components/files";
 import { AboutOverlay, CommandPalette, DropOverlay, HelpOverlay, Toast, WelcomeOverlay } from "@/components/overlays";
 import { TooltipRoot } from "@/components/primitives";
@@ -22,6 +22,7 @@ import {
   useUpdateFlow,
 } from "@/hooks";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getVersion } from "@tauri-apps/api/app";
 import { emitTo, listen } from "@tauri-apps/api/event";
@@ -39,6 +40,7 @@ import {
   getContextBundleStats,
   getWhatsNewToastMessage,
   isFilesystemRoot,
+  isImagePath,
   isSupportedTextPath,
   markdownInsertion,
   normalizeProseFontFamily,
@@ -64,7 +66,7 @@ import {
 } from "@/lib";
 import "./app.css";
 
-type ViewMode = "split" | "reading" | "editor";
+type ViewMode = "split" | "reading" | "editor" | "preview";
 type OpenFileRequest = string | {
   path: string;
   waitMarker?: string | null;
@@ -385,6 +387,7 @@ export function App() {
   const [plainTextEditorOnly, setPlainTextEditorOnly] = useState(false);
   const readingMode = viewMode === "reading" && !plainTextEditorOnly;
   const editorOnly = viewMode === "editor" || plainTextEditorOnly;
+  const previewOnly = viewMode === "preview" && !plainTextEditorOnly;
 
   const toggleReadingMode = useCallback(() => {
     setViewMode((current) => (current === "reading" ? "split" : "reading"));
@@ -393,6 +396,34 @@ export function App() {
   const toggleEditorOnly = useCallback(() => {
     setViewMode((current) => (current === "editor" ? "split" : "editor"));
   }, [setViewMode]);
+  const togglePreviewOnly = useCallback(() => {
+    setViewMode((current) => (current === "preview" ? "split" : "preview"));
+  }, [setViewMode]);
+
+  // App-wide zoom (⌘= / ⌘- / ⌘0), applied at the webview level so editor,
+  // preview, and chrome all scale together. Persisted across restarts.
+  const [zoomLevel, setZoomLevel] = usePersistedState<number>(
+    STORAGE_KEYS.zoomLevel,
+    1,
+  );
+  useEffect(() => {
+    getCurrentWebview()
+      .setZoom(zoomLevel)
+      .catch((err) => console.error("marka.md: setZoom failed", err));
+  }, [zoomLevel]);
+  const zoomBy = useCallback(
+    (delta: number) => {
+      setZoomLevel((current) => {
+        const next = Math.round((current + delta) * 10) / 10;
+        return Math.min(3, Math.max(0.5, next));
+      });
+    },
+    [setZoomLevel],
+  );
+
+  // In-app image viewer — set when an image file is selected in the sidebar;
+  // rendered in place of the editor/preview panes until closed.
+  const [imageViewPath, setImageViewPath] = useState<string | null>(null);
 
   // Plain-text fallback files cannot render in preview, so they temporarily force editor-only
   // without changing the user's persisted default view mode.
@@ -905,7 +936,33 @@ export function App() {
         e.preventDefault();
         toggleEditorOnly();
       },
+      "mod+shift+b": (e: KeyboardEvent) => {
+        e.preventDefault();
+        togglePreviewOnly();
+      },
+      "mod+=": (e: KeyboardEvent) => {
+        e.preventDefault();
+        zoomBy(0.1);
+      },
+      "mod+shift+=": (e: KeyboardEvent) => {
+        // ⌘⇧= is ⌘+ on most layouts — treat it as zoom in too
+        e.preventDefault();
+        zoomBy(0.1);
+      },
+      "mod+-": (e: KeyboardEvent) => {
+        e.preventDefault();
+        zoomBy(-0.1);
+      },
+      "mod+0": (e: KeyboardEvent) => {
+        e.preventDefault();
+        setZoomLevel(1);
+      },
       escape: (e: KeyboardEvent) => {
+        if (imageViewPath) {
+          e.preventDefault();
+          setImageViewPath(null);
+          return;
+        }
         if (readingMode) {
           e.preventDefault();
           exitReadingMode();
@@ -943,6 +1000,10 @@ export function App() {
       toggleReadingMode,
       exitReadingMode,
       toggleEditorOnly,
+      togglePreviewOnly,
+      zoomBy,
+      setZoomLevel,
+      imageViewPath,
     ],
   );
   useShortcuts(shortcuts);
@@ -1097,7 +1158,14 @@ export function App() {
               onWidthChange={setSidebarWidth}
               onAddFolder={handleOpenFolder}
               onCloseFolder={handleCloseFolder}
-              onSelectFile={(path) => void loadFile(path)}
+              onSelectFile={(path) => {
+                if (isImagePath(path)) {
+                  setImageViewPath(path);
+                  return;
+                }
+                setImageViewPath(null);
+                void loadFile(path);
+              }}
               onMove={handleMove}
               onContextMenu={handleContextMenu}
               stagedPaths={stagedPaths}
@@ -1125,9 +1193,15 @@ export function App() {
                 onReorder={reorderTabs}
                 onContextMenu={(e, path) => handleContextMenu(e, { path, name: basename(path), isDir: false })}
               />
-              {editorOnly ? (
+              {imageViewPath ? (
+                <ImageView path={imageViewPath} onClose={() => setImageViewPath(null)} />
+              ) : editorOnly ? (
                 <div className="mdv-shell__editor-solo">
                   <Editor value={source} onChange={setSource} vimOn={vimOn} onVimMode={setVimMode} viewRef={editorViewRef} />
+                </div>
+              ) : previewOnly ? (
+                <div className="mdv-shell__preview-solo">
+                  <Preview source={debouncedPreview} filePath={activePath} onOpenPreviewWindow={openPreviewWindow} />
                 </div>
               ) : (
                 <Splitter

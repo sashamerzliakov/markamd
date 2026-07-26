@@ -21,7 +21,9 @@
 }
 
 .mdv-workspace > .mdv-splitter,
-.mdv-workspace > .mdv-shell__editor-solo {
+.mdv-workspace > .mdv-shell__editor-solo,
+.mdv-workspace > .mdv-shell__preview-solo,
+.mdv-workspace > .mdv-image-view {
   flex: 1;
   min-height: 0;
 }
@@ -150,6 +152,92 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+}
+
+/* preview-only mode (⌘⇧B) — editor pane hidden, preview fills remaining width */
+.mdv-shell__preview-solo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mdv-shell__preview-solo > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* in-app image viewer — replaces the editor/preview panes while open */
+.mdv-image-view {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mdv-image-view__bar {
+  flex: 0 0 auto;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 74%, var(--bg));
+}
+
+.mdv-image-view__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mdv-image-view__close {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--muted);
+  transition:
+    color var(--dur-fast) var(--easing),
+    background-color var(--dur-fast) var(--easing);
+}
+
+.mdv-image-view__close:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.mdv-image-view__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.mdv-image-view__img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.mdv-image-view__error {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--muted);
 }
 
 /* splitter */

@@ -1,6 +1,8 @@
 export { renderMarkdown, ensureMarkdownReady } from "./markdown";
 export {
   extensionFromMarkdownAssetSrc,
+  imageMimeForPath,
+  isImagePath,
   markdownMediaAssetForExtension,
   type MarkdownMediaAsset,
   type MarkdownMediaKind,

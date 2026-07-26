@@ -41,6 +41,20 @@ export function markdownMediaAssetForExtension(ext: string): MarkdownMediaAsset 
   return { kind: "image", mime: IMAGE_MIME[normalized] ?? "image/png" };
 }
 
+/** True when the path has a renderable image extension (used by the in-app image viewer). */
+export function isImagePath(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  if (dot < 0) return false;
+  return path.slice(dot + 1).toLowerCase() in IMAGE_MIME;
+}
+
+/** MIME type for an image path; falls back to image/png. */
+export function imageMimeForPath(path: string): string {
+  const dot = path.lastIndexOf(".");
+  const ext = dot >= 0 ? path.slice(dot + 1).toLowerCase() : "";
+  return IMAGE_MIME[ext] ?? "image/png";
+}
+
 export function extensionFromMarkdownAssetSrc(src: string): string {
   const path = src.split("#", 1)[0].split("?", 1)[0];
   const dot = path.lastIndexOf(".");
