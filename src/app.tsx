@@ -6,6 +6,7 @@ import { ContextMenu, Sidebar, type ContextMenuItem } from "@/components/files";
 import { AboutOverlay, CommandPalette, DropOverlay, HelpOverlay, Toast, WelcomeOverlay } from "@/components/overlays";
 import { TooltipRoot } from "@/components/primitives";
 import {
+  useAppZoom,
   useContextMenu,
   useDebouncedValue,
   useFileOps,
@@ -22,7 +23,6 @@ import {
   useUpdateFlow,
 } from "@/hooks";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getVersion } from "@tauri-apps/api/app";
 import { emitTo, listen } from "@tauri-apps/api/event";
@@ -431,26 +431,7 @@ export function App() {
     });
   }, [setViewMode]);
 
-  // App-wide zoom (⌘= / ⌘- / ⌘0), applied at the webview level so editor,
-  // preview, and chrome all scale together. Persisted across restarts.
-  const [zoomLevel, setZoomLevel] = usePersistedState<number>(
-    STORAGE_KEYS.zoomLevel,
-    1,
-  );
-  useEffect(() => {
-    getCurrentWebview()
-      .setZoom(zoomLevel)
-      .catch((err) => console.error("marka.md: setZoom failed", err));
-  }, [zoomLevel]);
-  const zoomBy = useCallback(
-    (delta: number) => {
-      setZoomLevel((current) => {
-        const next = Math.round((current + delta) * 10) / 10;
-        return Math.min(3, Math.max(0.5, next));
-      });
-    },
-    [setZoomLevel],
-  );
+  useAppZoom();
 
   // In-app file viewer (images / pdf / html) — such files open as viewer tabs;
   // when the active tab's path is viewable, FileView renders instead of the editor.
@@ -979,23 +960,6 @@ export function App() {
         e.preventDefault();
         cycleViewMode();
       },
-      "mod+=": (e: KeyboardEvent) => {
-        e.preventDefault();
-        zoomBy(0.1);
-      },
-      "mod+shift+=": (e: KeyboardEvent) => {
-        // ⌘⇧= is ⌘+ on most layouts — treat it as zoom in too
-        e.preventDefault();
-        zoomBy(0.1);
-      },
-      "mod+-": (e: KeyboardEvent) => {
-        e.preventDefault();
-        zoomBy(-0.1);
-      },
-      "mod+0": (e: KeyboardEvent) => {
-        e.preventDefault();
-        setZoomLevel(1);
-      },
       escape: (e: KeyboardEvent) => {
         if (activeViewerKind) {
           e.preventDefault();
@@ -1040,8 +1004,6 @@ export function App() {
       exitReadingMode,
       toggleEditorOnly,
       cycleViewMode,
-      zoomBy,
-      setZoomLevel,
       activeViewerKind,
     ],
   );
