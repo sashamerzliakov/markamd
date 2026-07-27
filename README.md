@@ -38,8 +38,8 @@ the `custom` branch adds, on top of upstream:
 - **editable html with live preview** — edit left, rendered pane right, like markdown
 - **more editable file types** — js / css / py / json / log open straight into the editor
 - **folder favourites** — star a folder, click it to open as a workspace root
-- **app-wide zoom** — ⌘= / ⌘- / ⌘0, persisted
-- **perf: non-scanning folder watchers** — fixes a startup / add-folder freeze on large folders (being proposed upstream)
+- **app-wide zoom** — ⌘= / ⌘+ / ⌘- / ⌘0, persisted (merged upstream in [#123](https://github.com/mattenarle10/markamd/pull/123))
+- **perf: non-scanning folder watchers** — fixes a startup / add-folder freeze on large folders (merged upstream in [#122](https://github.com/mattenarle10/markamd/pull/122))
 
 details and the fork workflow live in [CUSTOM.md](./CUSTOM.md). generalisable pieces get PRed upstream; the personal ones stay here.
 
