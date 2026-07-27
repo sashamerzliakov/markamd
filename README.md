@@ -27,7 +27,11 @@ works with claude, chatgpt, gemini, local agents, and anything that reads plain 
 
 ## about this fork
 
-this is [Sasha Merzliakov](https://github.com/sashamerzliakov)'s fork of [mattenarle10/markamd](https://github.com/mattenarle10/markamd) — all credit for the app itself to [Matt Enarle](https://github.com/mattenarle10). the `custom` branch adds, on top of upstream:
+this is [Sasha Merzliakov](https://github.com/sashamerzliakov)'s fork of [mattenarle10/markamd](https://github.com/mattenarle10/markamd) — all credit for the app itself to [Matt Enarle](https://github.com/mattenarle10).
+
+built openly with AI assistance (Claude) — i find the problems, direct the work, and verify the results in daily use; the AI does the heavy lifting on implementation, root-cause tracing, and tests. commit trailers carry the co-author tag.
+
+the `custom` branch adds, on top of upstream:
 
 - **⌘⇧B view cycling** — split → editor-only → preview-only → split
 - **in-app file viewer** — images and PDFs open as read-only tabs
@@ -38,8 +42,6 @@ this is [Sasha Merzliakov](https://github.com/sashamerzliakov)'s fork of [matten
 - **perf: non-scanning folder watchers** — fixes a startup / add-folder freeze on large folders (being proposed upstream)
 
 details and the fork workflow live in [CUSTOM.md](./CUSTOM.md). generalisable pieces get PRed upstream; the personal ones stay here.
-
-built openly with AI assistance (Claude) — i find the problems, direct the work, and verify the results in daily use; the AI does the heavy lifting on implementation, root-cause tracing, and tests. commit trailers carry the co-author tag.
 
 ## what you get
 
