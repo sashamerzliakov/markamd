@@ -39,6 +39,8 @@ this is [Sasha Merzliakov](https://github.com/sashamerzliakov)'s fork of [matten
 
 details and the fork workflow live in [CUSTOM.md](./CUSTOM.md). generalisable pieces get PRed upstream; the personal ones stay here.
 
+built openly with AI assistance (Claude) — i find the problems, direct the work, and verify the results in daily use; the AI does the heavy lifting on implementation, root-cause tracing, and tests. commit trailers carry the co-author tag.
+
 ## what you get
 
 | area | details |
