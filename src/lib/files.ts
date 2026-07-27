@@ -47,8 +47,15 @@ export function isMarkdownPath(path: string): boolean {
 // Plain-text code files that open directly in the editor (no preview rendering).
 const PLAIN_TEXT_EDIT_EXT = /\.(js|mjs|cjs|css|py|json|log)$/i;
 
+// dotenv family: .env, .env.local, .env.production, plus anything.env
+const ENV_FILE_NAME = /(^|[\\/])(\.env(\.[\w.-]+)?|[^\\/]+\.env)$/i;
+
+export function isEnvPath(path: string): boolean {
+  return ENV_FILE_NAME.test(path);
+}
+
 export function isPlainTextEditPath(path: string): boolean {
-  return PLAIN_TEXT_EDIT_EXT.test(path);
+  return PLAIN_TEXT_EDIT_EXT.test(path) || isEnvPath(path);
 }
 
 // HTML opens in the editor with a live rendered preview pane (like markdown).
@@ -127,7 +134,10 @@ const DOT_PREFIX_ALLOWLIST = new Set([
 ]);
 
 export function isVisibleTreeEntryName(name: string): boolean {
-  return !name.startsWith(".") || DOT_PREFIX_ALLOWLIST.has(name);
+  if (!name.startsWith(".")) return true;
+  // dotenv files are hidden by the leading dot but are real, editable content
+  if (name === ".env" || name.startsWith(".env.")) return true;
+  return DOT_PREFIX_ALLOWLIST.has(name);
 }
 
 const WALK_SKIP = new Set([
@@ -215,7 +225,7 @@ async function checkBinaryAndSize(path: string): Promise<FileValidation> {
 /** Quick guard before reading a supported plain-text file. Catches PDFs, images, oversized files. */
 export async function validateSupportedTextFile(path: string): Promise<FileValidation> {
   if (!isSupportedTextPath(path)) {
-    return { ok: false, reason: `${basename(path)} isn't supported. marka.md opens .md / .markdown / .mdx / .csv / .html / .js / .css / .py / .json / .log` };
+    return { ok: false, reason: `${basename(path)} isn't supported. marka.md opens .md / .markdown / .mdx / .csv / .html / .js / .css / .py / .json / .log / .env` };
   }
   return checkBinaryAndSize(path);
 }

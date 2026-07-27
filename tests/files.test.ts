@@ -8,8 +8,15 @@ test("shows common dot-prefixed tool folders", () => {
 });
 
 test("keeps noisy hidden entries filtered", () => {
-  for (const name of [".git", ".DS_Store", ".cache", ".env"]) {
+  for (const name of [".git", ".DS_Store", ".cache", ".envrc-backup"]) {
     expect(isVisibleTreeEntryName(name)).toBe(false);
+  }
+});
+
+// fork divergence from upstream: dotenv files are shown (and editable)
+test("shows dotenv files", () => {
+  for (const name of [".env", ".env.local", ".env.production"]) {
+    expect(isVisibleTreeEntryName(name)).toBe(true);
   }
 });
 
