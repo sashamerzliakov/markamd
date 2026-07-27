@@ -1200,7 +1200,17 @@ export function App() {
                 onContextMenu={(e, path) => handleContextMenu(e, { path, name: basename(path), isDir: false })}
               />
               {activeViewerKind && activePath ? (
-                <FileView path={activePath} onClose={() => handleCloseTab(activeTabId)} />
+                <FileView
+                  path={activePath}
+                  onClose={() => handleCloseTab(activeTabId)}
+                  onOpenAsText={(path) => {
+                    // svg: reopen as an editable plain-text tab; remember the
+                    // preference so the editor-only mode kicks in for it
+                    extPrefs.current.set(getExt(path), "text");
+                    handleCloseTab(activeTabId);
+                    void loadPlainTextFile(path);
+                  }}
+                />
               ) : editorOnly ? (
                 <div className="mdv-shell__editor-solo">
                   <Editor value={source} onChange={setSource} vimOn={vimOn} onVimMode={setVimMode} viewRef={editorViewRef} />

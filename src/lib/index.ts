@@ -4,6 +4,7 @@ export {
   fileViewerKindForPath,
   imageMimeForPath,
   isImagePath,
+  mediaMimeForPath,
   markdownMediaAssetForExtension,
   type FileViewerKind,
   type MarkdownMediaAsset,

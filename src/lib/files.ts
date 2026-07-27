@@ -44,8 +44,10 @@ export function isMarkdownPath(path: string): boolean {
   return MARKDOWN_EXT.test(path);
 }
 
-// Plain-text code files that open directly in the editor (no preview rendering).
-const PLAIN_TEXT_EDIT_EXT = /\.(js|mjs|cjs|css|py|json|log)$/i;
+// Plain-text code/config files that open directly in the editor (no preview
+// rendering). rtf opens as raw markup — there is no in-app RTF renderer.
+const PLAIN_TEXT_EDIT_EXT =
+  /\.(js|mjs|cjs|css|py|json|log|txt|yaml|yml|toml|ini|conf|sh|zsh|ts|tsx|jsx|xml|rtf)$/i;
 
 // dotenv family: .env, .env.local, .env.production, plus anything.env
 const ENV_FILE_NAME = /(^|[\\/])(\.env(\.[\w.-]+)?|[^\\/]+\.env)$/i;

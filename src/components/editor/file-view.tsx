@@ -1,21 +1,40 @@
 import { useEffect, useState } from "react";
 import { readFile } from "@tauri-apps/plugin-fs";
-import { X } from "lucide-react";
-import { basename, fileViewerKindForPath, imageMimeForPath } from "@/lib";
+import { openPath } from "@tauri-apps/plugin-opener";
+import { ExternalLink, FileCode2, X } from "lucide-react";
+import {
+  basename,
+  fileViewerKindForPath,
+  imageMimeForPath,
+  mediaMimeForPath,
+  type FileViewerKind,
+} from "@/lib";
 
 type FileViewProps = {
   path: string;
   onClose: () => void;
+  /** Reopen this file as an editable plain-text tab (svg only). */
+  onOpenAsText?: (path: string) => void;
 };
 
-type ViewerContent = { kind: "image" | "pdf"; url: string };
+type ViewerContent =
+  | { kind: "image" | "pdf" | "video" | "audio"; url: string; mime: string }
+  | { kind: "external" };
+
+// Media loads fully into memory for the blob URL — refuse silly sizes.
+const MAX_VIEWER_BYTES = 512 * 1024 * 1024;
+
+function isSvgPath(path: string): boolean {
+  return /\.svg$/i.test(path);
+}
 
 /**
- * Renders a binary file (image / pdf) selected in the sidebar, in place of the
- * editor/preview panes. Both load as blob URLs; PDFs render via WKWebView's
- * native viewer.
+ * Renders a binary file selected in the sidebar, in place of the editor/
+ * preview panes. Images and PDFs load as blob URLs (PDFs render via
+ * WKWebView's native viewer); video/audio play with native controls; Office
+ * formats get a launcher card that opens the OS default app.
  */
-export function FileView({ path, onClose }: FileViewProps) {
+export function FileView({ path, onClose, onOpenAsText }: FileViewProps) {
   const [content, setContent] = useState<ViewerContent | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,16 +44,26 @@ export function FileView({ path, onClose }: FileViewProps) {
     setContent(null);
     setError(null);
 
-    const kind = fileViewerKindForPath(path);
+    const kind: FileViewerKind | null = fileViewerKindForPath(path);
     const load = async () => {
-      if (kind !== "image" && kind !== "pdf") {
+      if (kind === "external") {
+        setContent({ kind });
+        return;
+      }
+      if (kind !== "image" && kind !== "pdf" && kind !== "video" && kind !== "audio") {
         throw new Error(`unsupported viewer file: ${basename(path)}`);
       }
       const bytes = await readFile(path);
       if (cancelled) return;
-      const mime = kind === "pdf" ? "application/pdf" : imageMimeForPath(path);
+      if (bytes.byteLength > MAX_VIEWER_BYTES) {
+        throw new Error(`${basename(path)} is too large to preview in-app`);
+      }
+      const mime =
+        kind === "pdf" ? "application/pdf"
+        : kind === "image" ? imageMimeForPath(path)
+        : mediaMimeForPath(path);
       objectUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
-      setContent({ kind, url: objectUrl });
+      setContent({ kind, url: objectUrl, mime });
     };
 
     load().catch((err) => {
@@ -49,26 +78,62 @@ export function FileView({ path, onClose }: FileViewProps) {
     };
   }, [path]);
 
+  const name = basename(path);
+  const frame = content && (content.kind === "pdf" || content.kind === "video");
+
   return (
     <div className="mdv-image-view">
       <div className="mdv-image-view__bar">
-        <span className="mdv-image-view__title" title={path}>{basename(path)}</span>
-        <button
-          type="button"
-          className="mdv-image-view__close"
-          aria-label="Close file preview"
-          onClick={onClose}
-        >
-          <X size={14} />
-        </button>
+        <span className="mdv-image-view__title" title={path}>{name}</span>
+        <span className="mdv-image-view__actions">
+          {onOpenAsText && isSvgPath(path) ? (
+            <button
+              type="button"
+              className="mdv-image-view__close"
+              data-tooltip="edit as text"
+              aria-label={`edit ${name} as text`}
+              onClick={() => onOpenAsText(path)}
+            >
+              <FileCode2 size={14} />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="mdv-image-view__close"
+            aria-label="Close file preview"
+            onClick={onClose}
+          >
+            <X size={14} />
+          </button>
+        </span>
       </div>
-      <div className={`mdv-image-view__body${content && content.kind !== "image" ? " mdv-image-view__body--frame" : ""}`}>
+      <div className={`mdv-image-view__body${frame ? " mdv-image-view__body--frame" : ""}`}>
         {error ? (
           <p className="mdv-image-view__error">{error}</p>
         ) : content?.kind === "image" ? (
-          <img className="mdv-image-view__img" src={content.url} alt={basename(path)} />
+          <img className="mdv-image-view__img" src={content.url} alt={name} />
         ) : content?.kind === "pdf" ? (
-          <iframe className="mdv-image-view__frame" src={content.url} title={basename(path)} />
+          <iframe className="mdv-image-view__frame" src={content.url} title={name} />
+        ) : content?.kind === "video" ? (
+          <video className="mdv-image-view__media" src={content.url} controls playsInline />
+        ) : content?.kind === "audio" ? (
+          <audio className="mdv-image-view__audio" src={content.url} controls />
+        ) : content?.kind === "external" ? (
+          <div className="mdv-image-view__external">
+            <p className="mdv-image-view__external-name">{name}</p>
+            <p className="mdv-image-view__error">no in-app renderer for this format</p>
+            <button
+              type="button"
+              className="mdv-image-view__open-external"
+              onClick={() => {
+                void openPath(path).catch((err) =>
+                  console.error("marka.md: openPath failed", err),
+                );
+              }}
+            >
+              <ExternalLink size={13} /> open in default app
+            </button>
+          </div>
         ) : null}
       </div>
     </div>

@@ -41,7 +41,11 @@ export function markdownMediaAssetForExtension(ext: string): MarkdownMediaAsset 
   return { kind: "image", mime: IMAGE_MIME[normalized] ?? "image/png" };
 }
 
-export type FileViewerKind = "image" | "pdf";
+export type FileViewerKind = "image" | "pdf" | "video" | "audio" | "external";
+
+// Binary formats with no in-app renderer — the viewer shows a launcher card
+// that opens them in the OS default app instead of an error toast.
+const EXTERNAL_APP_EXT = new Set(["doc", "docx", "xls", "xlsx", "ppt", "pptx"]);
 
 /** Viewer kind for files rendered by the in-app file viewer, or null when the path isn't viewable.
  *  HTML is NOT a viewer kind — it opens editable with a live preview pane. */
@@ -50,7 +54,17 @@ export function fileViewerKindForPath(path: string): FileViewerKind | null {
   const dot = path.lastIndexOf(".");
   const ext = dot >= 0 ? path.slice(dot + 1).toLowerCase() : "";
   if (ext === "pdf") return "pdf";
+  if (ext in VIDEO_MIME) return "video";
+  if (ext in AUDIO_MIME) return "audio";
+  if (EXTERNAL_APP_EXT.has(ext)) return "external";
   return null;
+}
+
+/** MIME type for a video/audio path (viewer playback); empty string when unknown. */
+export function mediaMimeForPath(path: string): string {
+  const dot = path.lastIndexOf(".");
+  const ext = dot >= 0 ? path.slice(dot + 1).toLowerCase() : "";
+  return VIDEO_MIME[ext] ?? AUDIO_MIME[ext] ?? "";
 }
 
 /** True when the path has a renderable image extension (used by the in-app image viewer). */
