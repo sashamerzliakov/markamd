@@ -38,7 +38,9 @@
         { "path": "**/.github" },
         { "path": "**/.github/**" },
         { "path": "**/.vscode" },
-        { "path": "**/.vscode/**" }
+        { "path": "**/.vscode/**" },
+        { "path": "**/.env" },
+        { "path": "**/.env.*" }
       ]
     },
     {
