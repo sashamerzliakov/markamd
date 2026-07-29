@@ -33,7 +33,7 @@ built openly with AI assistance (Claude) — i find the problems, direct the wor
 
 the `custom` branch adds, on top of upstream:
 
-- **⌘⇧B view cycling** — split → editor-only → preview-only → split
+- **⌘E view cycling** — split → editor-only → preview-only → split
 - **in-app file viewer** — images and PDFs open as read-only tabs
 - **editable html with live preview** — edit left, rendered pane right, like markdown
 - **more editable file types** — js / css / py / json / log open straight into the editor
