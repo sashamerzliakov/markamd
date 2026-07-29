@@ -17,12 +17,20 @@
 # productName is overridden too (that names the .app); mainBinaryName is left
 # alone so the bundler still finds the `marka.md` binary cargo produces.
 #
-# Usage: scripts/local/build-install-og.sh [git-ref]   (default: v1.7.1)
+# Usage: scripts/local/build-install-og.sh [git-ref] [suffix]
+#   default: v1.7.1 OG      → /Applications/marka.md-OG.app  (stock upstream)
+#   e.g.:    <sha>    PR    → /Applications/marka.md-PR.app  (upstream + a patch)
+#
+# Each suffix gets its own bundle identifier, so several can run at once with
+# separate single-instance locks and separate webview storage.
 set -euo pipefail
 
 REF="${1:-v1.7.1}"
-WORKTREE="$HOME/work/ykeo/marka-og"
-APP_NAME="marka.md-OG"
+SUFFIX="${2:-OG}"
+# macOS ships bash 3.2, which has no ${VAR,,} lowercase expansion
+SUFFIX_LC="$(printf '%s' "$SUFFIX" | tr '[:upper:]' '[:lower:]')"
+WORKTREE="$HOME/work/ykeo/marka-${SUFFIX_LC}"
+APP_NAME="marka.md-${SUFFIX}"
 DEST="/Applications/${APP_NAME}.app"
 
 cd "$(dirname "$0")/../.."
@@ -41,7 +49,7 @@ bun install
 
 bun tauri build --config '{
   "productName": "'"$APP_NAME"'",
-  "identifier": "com.mattenarle.markamd.og",
+  "identifier": "com.mattenarle.markamd.'"${SUFFIX_LC}"'",
   "plugins": { "updater": { "active": false } },
   "bundle": {
     "targets": ["app"],
