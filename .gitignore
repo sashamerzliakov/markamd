@@ -48,3 +48,5 @@ test-fixtures/
 
 # PR body drafts for merged PRs (GitHub keeps the real one)
 docs/fork-pr-body.md
+
+dist-release/

@@ -8,15 +8,15 @@
 
 <p align="center">
   <a href="https://markamd.vercel.app"><img src="https://img.shields.io/badge/site-markamd.vercel.app-orange?style=flat-square" alt="site" /></a>
-  <a href="https://github.com/mattenarle10/markamd/releases/latest"><img src="https://img.shields.io/github/v/release/mattenarle10/markamd?style=flat-square&color=orange&label=release" alt="release" /></a>
-  <a href="https://github.com/mattenarle10/markamd/releases"><img src="https://img.shields.io/github/downloads/mattenarle10/markamd/total?style=flat-square&color=black&label=downloads" alt="downloads" /></a>
-  <a href="https://github.com/mattenarle10/markamd/stargazers"><img src="https://img.shields.io/github/stars/mattenarle10/markamd?style=flat-square&color=black&label=stars" alt="stars" /></a>
+  <a href="https://github.com/sashamerzliakov/markamd/releases/latest"><img src="https://img.shields.io/github/v/release/sashamerzliakov/markamd?style=flat-square&color=orange&label=fork%20release&include_prereleases" alt="fork release" /></a>
+  <a href="https://github.com/mattenarle10/markamd/releases/latest"><img src="https://img.shields.io/github/v/release/mattenarle10/markamd?style=flat-square&color=black&label=upstream" alt="upstream release" /></a>
+    <a href="https://github.com/mattenarle10/markamd/stargazers"><img src="https://img.shields.io/github/stars/mattenarle10/markamd?style=flat-square&color=black&label=stars" alt="stars" /></a>
   <a href="https://opencollective.com/markamd"><img src="https://img.shields.io/opencollective/all/markamd?style=flat-square&color=orange&label=open%20collective" alt="open collective" /></a>
   <img src="https://img.shields.io/badge/macOS-13%2B-black?style=flat-square" alt="macos" />
   <img src="https://img.shields.io/badge/Windows-10%2B-black?style=flat-square" alt="windows" />
   <img src="https://img.shields.io/badge/Linux-x86__64-black?style=flat-square" alt="linux" />
   <img src="https://img.shields.io/badge/license-MIT-black?style=flat-square" alt="mit" />
-  <img src="https://img.shields.io/badge/notarized-Apple%20Developer-orange?style=flat-square" alt="notarized" />
+  <img src="https://img.shields.io/badge/fork%20build-unsigned-black?style=flat-square" alt="fork build unsigned" />
 </p>
 
 a cross-platform (**macOS · Windows · Linux**) markdown editor specialized for **ai context management**. live editor, rendered preview, file tabs, csv preview, grouped themes, smarter command palette, and a context tray for staging multiple notes into one AI-ready bundle.
@@ -68,27 +68,28 @@ the build script disables updater artifacts (they need upstream's signing key), 
 
 ## install
 
-[download the latest release →](https://github.com/mattenarle10/markamd/releases/latest)
+> **this fork builds for macOS (apple silicon) only.** upstream ships Windows,
+> Linux and intel mac — if you want those, [get them from
+> mattenarle10/markamd](https://github.com/mattenarle10/markamd/releases/latest)
+> and note you'll be running the original app, without the fork features listed
+> above.
 
-### macOS
+[**download the latest fork release →**](https://github.com/sashamerzliakov/markamd/releases/latest)
 
-- **homebrew**: `brew install --cask mattenarle10/tap/marka-md`
-- **apple silicon** (M1/M2/M3/M4): grab `marka.md.dmg` → drag **marka.md.app** into `/Applications` → open.
-- **intel mac**: grab `marka.md_intel.dmg` → same install steps.
+### macOS (apple silicon)
 
-Homebrew users can update with `brew update && brew upgrade --cask marka-md`. The in-app signed updater still works too.
+grab `marka.md.dmg` → drag **marka.md.app** into `/Applications` → open.
 
-### Windows (10+, x64)
+first launch is unsigned, so macOS will block it: **right-click the app → Open**,
+then confirm. or `xattr -dr com.apple.quarantine /Applications/marka.md.app`.
 
-grab `marka.md_*-setup.exe` → run. Windows SmartScreen may ask for confirmation because the Windows build is unsigned.
+**no auto-update.** the in-app updater is disabled in this build — it needs
+upstream's signing key, and pointing it at upstream's manifest would replace
+this fork with the original app. decline any update prompt. to update, pull and
+rebuild, or grab the next release here.
 
-### Linux (x86_64)
-
-three flavors, pick what fits your distro:
-
-- **AppImage** (works anywhere): `chmod +x marka.md_*.AppImage` → run. self-contained, no install step needed.
-- **.deb** (Debian / Ubuntu / Mint / Pop!_OS): `sudo dpkg -i marka.md_*_amd64.deb`
-- **.rpm** (Fedora / RHEL / Rocky / openSUSE): `sudo dnf install marka.md-*.x86_64.rpm`
+**not on homebrew.** `brew install --cask mattenarle10/tap/marka-md` installs
+*upstream's* build, not this one.
 
 ### from source
 
