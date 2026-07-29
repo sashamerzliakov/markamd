@@ -1220,12 +1220,12 @@ export function App() {
                   reloadToken={viewerReloadTokens[activePath] ?? 0}
                   onClose={() => handleCloseTab(activeTabId)}
                   onOpenAsText={(path) => {
-                    // svg: reopen as an editable plain-text tab.
-                    // Order matters — handleCloseTab drops this path's override,
-                    // so the override has to be set after it, not before.
-                    handleCloseTab(activeTabId);
+                    // svg: convert this viewer tab into an editable source tab.
+                    // Deliberately does NOT close the tab first — loadPlainTextFile
+                    // closes over `tabs` from this render, so a just-closed tab is
+                    // still in its array and it would early-return without loading.
                     openAsSource(path);
-                    void loadPlainTextFile(path);
+                    void loadPlainTextFile(path, { replaceExisting: true });
                   }}
                 />
               ) : editorOnly ? (

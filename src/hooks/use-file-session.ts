@@ -120,7 +120,9 @@ type UseFileSessionResult = {
   /** Discard buffer, leave activePath null. Accepts optional initial text for OS-drop. */
   startNewBuffer: (initial?: string) => void;
   /** Load any file as plain text, bypassing extension validation. */
-  loadPlainTextFile: (path: string) => Promise<void>;
+  /** Load any file as plain text. `replaceExisting` converts an already-open
+   *  viewer tab for the same path into a source tab instead of no-opping. */
+  loadPlainTextFile: (path: string, options?: { replaceExisting?: boolean }) => Promise<void>;
   dirty: boolean;
 };
 
@@ -470,10 +472,20 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     }
   }, [activeTabId, titleForPath]);
 
-  const loadPlainTextFile = useCallback(async (path: string) => {
+  const loadPlainTextFile = useCallback(async (
+    path: string,
+    options: { replaceExisting?: boolean } = {},
+  ) => {
     const seq = ++loadSeq.current;
     const existing = snapshotActiveTab(tabs).find((tab) => tab.path === path);
-    if (existing) {
+    // `replaceExisting` is for converting a viewer tab into a source tab — the
+    // tab for this path already exists and holds no text, so the plain
+    // "already open, just focus it" path would return without ever loading the
+    // content. Closing the tab first doesn't help: this callback closes over
+    // `tabs` from the current render, so the tab it was told to forget is
+    // still in that array and it early-returns anyway. Load into the tab
+    // instead of racing its removal.
+    if (existing && !options.replaceExisting) {
       if (activePathRef.current !== path) switchTab(existing.id);
       return;
     }
@@ -489,16 +501,26 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
       setSource(content);
       setSavedContent(content);
       setActivePath(path);
-      const tab: FileTab = {
-        id: makeTabId(),
-        path,
-        title: titleForPath(path),
-        source: content,
-        savedContent: content,
-        waitMarkers: [],
-      };
-      setTabs((prev) => [...snapshotActiveTab(prev), tab]);
-      setActiveTabId(tab.id);
+      if (existing) {
+        // in-place conversion — keep the tab, give it the file's text
+        setTabs((prev) => prev.map((tab) => (
+          tab.id === existing.id
+            ? { ...tab, source: content, savedContent: content }
+            : tab
+        )));
+        setActiveTabId(existing.id);
+      } else {
+        const tab: FileTab = {
+          id: makeTabId(),
+          path,
+          title: titleForPath(path),
+          source: content,
+          savedContent: content,
+          waitMarkers: [],
+        };
+        setTabs((prev) => [...snapshotActiveTab(prev), tab]);
+        setActiveTabId(tab.id);
+      }
       setSaveStatus("idle");
       setRecentFiles((prev) => [path, ...prev.filter((p) => p !== path)].slice(0, 8));
     } catch (err) {

@@ -133,7 +133,9 @@ export function useFileWatcher(
 ): void {
   const onChangeRef = useRef(onChange);
   const controllerRef = useRef<FileWatcherController | null>(null);
-  const pathsKey = Array.from(new Set(paths.filter((p) => p.length > 0))).join("\0");
+  // sorted so the key depends on the *set* of open paths, not their order —
+  // otherwise dragging a tab sideways re-runs the reconcile effect for nothing
+  const pathsKey = Array.from(new Set(paths.filter((p) => p.length > 0))).sort().join("\0");
 
   useEffect(() => {
     onChangeRef.current = onChange;
