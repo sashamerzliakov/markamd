@@ -44,6 +44,7 @@ import {
   isFilesystemRoot,
   hasPreviewRenderer,
   isHtmlPath,
+  isSvgPath,
   isSupportedTextPath,
   markdownInsertion,
   normalizeProseFontFamily,
@@ -448,6 +449,15 @@ export function App() {
     setTextOverrides((prev) => new Set(prev).add(path));
   }, []);
 
+  const showRendered = useCallback((path: string) => {
+    setTextOverrides((prev) => {
+      if (!prev.has(path)) return prev;
+      const next = new Set(prev);
+      next.delete(path);
+      return next;
+    });
+  }, []);
+
   // In-app file viewer (images / pdf / html) — such files open as viewer tabs;
   // when the active tab's path is viewable, FileView renders instead of the editor.
   // The override is checked here because without it "edit as text" had no
@@ -458,6 +468,26 @@ export function App() {
     : null;
   // HTML files edit like markdown but preview through a sandboxed iframe.
   const activeIsHtml = activePath ? isHtmlPath(activePath) : false;
+
+  /**
+   * Flip a rendered file to its source and back. Only formats that *have* a
+   * text form qualify — svg today; a png has no source to show.
+   *
+   * Returns whether it handled the request, so ⌘E can fall through to pane
+   * cycling for everything else.
+   */
+  const toggleSourceView = useCallback((path: string): boolean => {
+    if (!isSvgPath(path)) return false;
+    if (textOverrides.has(path)) {
+      // back to rendered — the buffer stays in its tab, ⌘E returns to it
+      showRendered(path);
+      return true;
+    }
+    if (fileViewerKindForPath(path) === null) return false;
+    openAsSource(path);
+    void loadPlainTextFile(path, { replaceExisting: true });
+    return true;
+  }, [textOverrides, showRendered, openAsSource, loadPlainTextFile]);
 
   // Files with no preview renderer temporarily force editor-only, without
   // changing the user's persisted default view mode.
@@ -973,6 +1003,12 @@ export function App() {
       },
       "mod+e": (e: KeyboardEvent) => {
         e.preventDefault();
+        // One meaning everywhere: "show me the editable form of this file."
+        // On a rendered file that has a source (svg) it flips render → source
+        // and back; on everything else it cycles the panes. Without this, ⌘E
+        // on a viewer tab silently changed viewMode with nothing on screen to
+        // show for it, because FileView renders regardless of view mode.
+        if (activePath && toggleSourceView(activePath)) return;
         cycleViewMode();
       },
       escape: (e: KeyboardEvent) => {
@@ -1020,6 +1056,7 @@ export function App() {
       toggleEditorOnly,
       cycleViewMode,
       activeViewerKind,
+      toggleSourceView,
     ],
   );
   useShortcuts(shortcuts);

@@ -99,6 +99,12 @@ export function mediaMimeForPath(path: string): string {
   return VIDEO_MIME[ext] ?? AUDIO_MIME[ext] ?? "";
 }
 
+/** True for SVG — the one media format that is also editable text, so it can
+ *  round-trip between the rendered view and its source. */
+export function isSvgPath(path: string): boolean {
+  return /\.svg$/i.test(path);
+}
+
 /** True when the path has a renderable image extension (used by the in-app image viewer). */
 export function isImagePath(path: string): boolean {
   const dot = path.lastIndexOf(".");

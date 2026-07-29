@@ -48,10 +48,11 @@ If `heic`, `avif`, `tiff` or `ico` show a broken image, tell me which — they c
 | ☐ | Step |
 |---|---|
 | ☐ | Open `01-images/vector.svg` — renders as an image |
-| ☐ | Click **"edit as text"** in the viewer bar (icon-only button, `</>`-style, left of the × ) |
+| ☐ | Press **⌘E** — or click "edit as text" in the viewer bar (icon-only `</>` button, left of the ×). Both do the same thing |
 | ☐ | **The SVG source opens in the editor**, editor-only, no preview pane. Until this fix the viewer just re-rendered over the top and the click looked like it did nothing |
 | ☐ | Edit the `fill` colour, ⌘S |
-| ☐ | Close the tab, click `vector.svg` again → **renders again**, with your colour change. The source override is per-file and cleared on close |
+| ☐ | Press **⌘E** again → back to the rendered SVG, showing your change. It's a toggle, not a one-way door |
+| ☐ | Close the tab, click `vector.svg` again → renders. The source override is per-file and cleared on close |
 | ☐ | Open a second SVG (any) → still renders. Choosing source for one file must not change how others open |
 
 ## 2. Video → Render

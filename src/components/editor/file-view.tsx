@@ -6,6 +6,7 @@ import {
   basename,
   fileViewerKindForPath,
   imageMimeForPath,
+  isSvgPath,
   mediaMimeForPath,
   type FileViewerKind,
 } from "@/lib";
@@ -25,10 +26,6 @@ type ViewerContent =
 
 // Media loads fully into memory for the blob URL — refuse silly sizes.
 const MAX_VIEWER_BYTES = 512 * 1024 * 1024;
-
-function isSvgPath(path: string): boolean {
-  return /\.svg$/i.test(path);
-}
 
 /**
  * Renders a binary file selected in the sidebar, in place of the editor/
@@ -98,7 +95,7 @@ export function FileView({ path, onClose, onOpenAsText, reloadToken = 0 }: FileV
             <button
               type="button"
               className="mdv-image-view__close"
-              data-tooltip="edit as text"
+              data-tooltip="edit as text (⌘E)"
               aria-label={`edit ${name} as text`}
               onClick={() => onOpenAsText(path)}
             >
