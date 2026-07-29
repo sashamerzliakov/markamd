@@ -3,10 +3,12 @@ import { CSV_PREVIEW_MAX_COLUMNS, CSV_PREVIEW_MAX_ROWS, parseCsvPreview } from "
 type CsvPreviewProps = {
   source: string;
   fileName?: string;
+  /** Field separator — tab for .tsv, comma otherwise. */
+  delimiter?: string;
 };
 
-export function CsvPreview({ source, fileName }: CsvPreviewProps) {
-  const preview = parseCsvPreview(source);
+export function CsvPreview({ source, fileName, delimiter = "," }: CsvPreviewProps) {
+  const preview = parseCsvPreview(source, CSV_PREVIEW_MAX_ROWS, CSV_PREVIEW_MAX_COLUMNS, delimiter);
 
   if (preview.headers.length === 0) {
     return (

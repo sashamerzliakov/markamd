@@ -1,6 +1,7 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readDir, readFile, readTextFile, writeTextFile, exists, stat, rename, mkdir, remove } from "@tauri-apps/plugin-fs";
 import { isCsvPath } from "./csv";
+import { fileViewerKindForPath } from "./media-assets";
 
 export type FileEntry = {
   name: string;
@@ -44,11 +45,6 @@ export function isMarkdownPath(path: string): boolean {
   return MARKDOWN_EXT.test(path);
 }
 
-// Plain-text code/config files that open directly in the editor (no preview
-// rendering). rtf opens as raw markup — there is no in-app RTF renderer.
-const PLAIN_TEXT_EDIT_EXT =
-  /\.(js|mjs|cjs|css|py|json|log|txt|yaml|yml|toml|ini|conf|sh|zsh|ts|tsx|jsx|xml|rtf)$/i;
-
 // dotenv family: .env, .env.local, .env.production, plus anything.env
 const ENV_FILE_NAME = /(^|[\\/])(\.env(\.[\w.-]+)?|[^\\/]+\.env)$/i;
 
@@ -56,8 +52,18 @@ export function isEnvPath(path: string): boolean {
   return ENV_FILE_NAME.test(path);
 }
 
+/**
+ * Text is the default, not an allowlist.
+ *
+ * Media formats are a closed set (bounded by what WebKit can decode) and opaque
+ * binaries are a known list, so both are enumerated in media-assets.ts.
+ * Everything else — every config, script, lockfile, dialect and dotfile, known
+ * or not — opens in the editor. `checkBinaryAndSize` is the backstop: anything
+ * that turns out to be binary is refused at read time with a real reason,
+ * rather than being pre-emptively excluded by a list nobody can keep complete.
+ */
 export function isPlainTextEditPath(path: string): boolean {
-  return PLAIN_TEXT_EDIT_EXT.test(path) || isEnvPath(path);
+  return fileViewerKindForPath(path) === null;
 }
 
 // HTML opens in the editor with a live rendered preview pane (like markdown).
@@ -65,6 +71,19 @@ const HTML_EXT = /\.(html|htm)$/i;
 
 export function isHtmlPath(path: string): boolean {
   return HTML_EXT.test(path);
+}
+
+/**
+ * True when the file has something to render in the preview pane: markdown,
+ * a csv/tsv table, or live HTML. Everything else is edit-only.
+ *
+ * Deliberately NOT expressed as "is this a plain-text file?" — since text
+ * became the default classification, `isPlainTextEditPath` is true for .html
+ * and .csv as well, so using it to gate the preview silently disables the HTML
+ * live preview and the CSV table view.
+ */
+export function hasPreviewRenderer(path: string): boolean {
+  return isMarkdownPath(path) || isCsvPath(path) || isHtmlPath(path);
 }
 
 export function isSupportedTextPath(path: string): boolean {
@@ -190,6 +209,9 @@ export const walkMarkdownFiles = walkSupportedTextFiles;
 
 const MAX_TEXT_BYTES = 5 * 1024 * 1024; // 5MB sanity cap
 
+// How far into a file to look for a NUL byte before calling it text.
+const BINARY_SNIFF_BYTES = 8000;
+
 const BINARY_SIGNATURES: Array<{ bytes: number[]; label: string }> = [
   { bytes: [0x25, 0x50, 0x44, 0x46], label: "pdf" }, // %PDF
   { bytes: [0xff, 0xd8, 0xff], label: "jpeg image" },
@@ -218,6 +240,12 @@ async function checkBinaryAndSize(path: string): Promise<FileValidation> {
         return { ok: false, reason: `${basename(path)} looks like a ${sig.label}. marka.md only opens plain-text files.` };
       }
     }
+    // Signatures only name the formats we bothered to list. Since anything not
+    // recognised as media opens as text, the general test is the one file(1)
+    // and git use: a NUL byte in the leading bytes means binary.
+    if (head.subarray(0, BINARY_SNIFF_BYTES).includes(0x00)) {
+      return { ok: false, reason: `${basename(path)} looks like a binary file. marka.md only opens plain-text files.` };
+    }
   } catch (err) {
     return { ok: false, reason: `could not read ${basename(path)} — ${err}` };
   }
@@ -227,7 +255,7 @@ async function checkBinaryAndSize(path: string): Promise<FileValidation> {
 /** Quick guard before reading a supported plain-text file. Catches PDFs, images, oversized files. */
 export async function validateSupportedTextFile(path: string): Promise<FileValidation> {
   if (!isSupportedTextPath(path)) {
-    return { ok: false, reason: `${basename(path)} isn't supported. marka.md opens .md / .markdown / .mdx / .csv / .html / .js / .css / .py / .json / .log / .env` };
+    return { ok: false, reason: `${basename(path)} opens in its default app — marka.md has no in-app view for it.` };
   }
   return checkBinaryAndSize(path);
 }

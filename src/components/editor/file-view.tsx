@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { readFile } from "@tauri-apps/plugin-fs";
+import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { ExternalLink, FileCode2, X } from "lucide-react";
 import {
   basename,
   fileViewerKindForPath,
   imageMimeForPath,
+  isSvgPath,
   mediaMimeForPath,
   type FileViewerKind,
 } from "@/lib";
@@ -15,6 +16,8 @@ type FileViewProps = {
   onClose: () => void;
   /** Reopen this file as an editable plain-text tab (svg only). */
   onOpenAsText?: (path: string) => void;
+  /** Bumped when the file changes on disk — forces a re-read of the bytes. */
+  reloadToken?: number;
 };
 
 type ViewerContent =
@@ -24,17 +27,13 @@ type ViewerContent =
 // Media loads fully into memory for the blob URL — refuse silly sizes.
 const MAX_VIEWER_BYTES = 512 * 1024 * 1024;
 
-function isSvgPath(path: string): boolean {
-  return /\.svg$/i.test(path);
-}
-
 /**
  * Renders a binary file selected in the sidebar, in place of the editor/
  * preview panes. Images and PDFs load as blob URLs (PDFs render via
  * WKWebView's native viewer); video/audio play with native controls; Office
  * formats get a launcher card that opens the OS default app.
  */
-export function FileView({ path, onClose, onOpenAsText }: FileViewProps) {
+export function FileView({ path, onClose, onOpenAsText, reloadToken = 0 }: FileViewProps) {
   const [content, setContent] = useState<ViewerContent | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,11 +52,17 @@ export function FileView({ path, onClose, onOpenAsText }: FileViewProps) {
       if (kind !== "image" && kind !== "pdf" && kind !== "video" && kind !== "audio") {
         throw new Error(`unsupported viewer file: ${basename(path)}`);
       }
+      // Size-check before reading — checking byteLength after readFile would
+      // already have pulled the whole file into memory, which is the thing the
+      // cap exists to prevent.
+      const info = await stat(path);
+      if (cancelled) return;
+      if (info.size > MAX_VIEWER_BYTES) {
+        const mb = (info.size / (1024 * 1024)).toFixed(0);
+        throw new Error(`${basename(path)} is ${mb} MB — too large to preview in-app`);
+      }
       const bytes = await readFile(path);
       if (cancelled) return;
-      if (bytes.byteLength > MAX_VIEWER_BYTES) {
-        throw new Error(`${basename(path)} is too large to preview in-app`);
-      }
       const mime =
         kind === "pdf" ? "application/pdf"
         : kind === "image" ? imageMimeForPath(path)
@@ -76,7 +81,7 @@ export function FileView({ path, onClose, onOpenAsText }: FileViewProps) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [path]);
+  }, [path, reloadToken]);
 
   const name = basename(path);
   const frame = content && (content.kind === "pdf" || content.kind === "video");
@@ -90,7 +95,7 @@ export function FileView({ path, onClose, onOpenAsText }: FileViewProps) {
             <button
               type="button"
               className="mdv-image-view__close"
-              data-tooltip="edit as text"
+              data-tooltip="edit as text (⌘E)"
               aria-label={`edit ${name} as text`}
               onClick={() => onOpenAsText(path)}
             >

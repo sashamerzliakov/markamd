@@ -154,7 +154,7 @@
   overflow: hidden;
 }
 
-/* preview-only mode (⌘⇧B) — editor pane hidden, preview fills remaining width */
+/* preview-only mode (⌘E) — editor pane hidden, preview fills remaining width */
 .mdv-shell__preview-solo {
   flex: 1;
   min-width: 0;

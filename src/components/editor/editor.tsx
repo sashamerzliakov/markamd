@@ -154,11 +154,32 @@ export function Editor({ value, onChange, vimOn = false, onVimMode, viewRef: ext
     const view = viewRef.current;
     if (!view) return;
     const current = view.state.doc.toString();
-    if (current !== value) {
-      view.dispatch({
-        changes: { from: 0, to: current.length, insert: value },
-      });
+    if (current === value) return;
+
+    // Replace only the span that actually differs. A full 0..len replace maps
+    // the selection to the end of the document and jumps the scroll position —
+    // which is fine for a one-off load, but unusable while an agent rewrites
+    // the file underneath you. Trimming to the changed middle lets CodeMirror
+    // map the cursor through the change, so it stays put.
+    let start = 0;
+    const max = Math.min(current.length, value.length);
+    while (start < max && current[start] === value[start]) start += 1;
+
+    let backwards = 0;
+    while (
+      backwards < max - start
+      && current[current.length - 1 - backwards] === value[value.length - 1 - backwards]
+    ) {
+      backwards += 1;
     }
+
+    view.dispatch({
+      changes: {
+        from: start,
+        to: current.length - backwards,
+        insert: value.slice(start, value.length - backwards),
+      },
+    });
   }, [value]);
 
   // vim mode toggle (#23). Lazy-loads @replit/codemirror-vim on first enable

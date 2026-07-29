@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   basename,
+  fileViewerKindForPath,
   joinPath,
   pathExists,
   pickSaveMarkdown,
@@ -16,10 +17,58 @@ import { usePersistedState } from "./use-persisted-state";
 import { useFileWatcher } from "./use-file-watcher";
 
 const SAVED_FLASH_MS = 1200;
+const RELOAD_TOAST_MS = 2400;
 const INITIAL_TAB_ID = "tab-0";
 const UNTITLED_TITLE = "untitled";
 
 export type LoadError = { message: string; path?: string; canOpenAsText?: boolean };
+
+export type ExternalChangeAction = "none" | "background" | "reload" | "conflict";
+
+/**
+ * Decide what a disk change to `path` means, given the session state at the
+ * moment of the decision.
+ *
+ * Pure and separate from the hook on purpose. The dangerous version of this
+ * logic reads "is this file active?" before awaiting the file read and trusts
+ * it afterwards — by which point the user may have switched tabs, so the
+ * reload lands in the wrong buffer and the next save writes it to the wrong
+ * file. Taking every input as an argument makes that ordering explicit at the
+ * call site rather than implicit in a closure.
+ */
+export function resolveExternalChange(input: {
+  path: string;
+  activePath: string | null;
+  fresh: string;
+  source: string;
+  savedContent: string;
+}): ExternalChangeAction {
+  const { path, activePath, fresh, source, savedContent } = input;
+  if (path !== activePath) return "background";
+  if (fresh === source) return "none";
+  return source === savedContent ? "reload" : "conflict";
+}
+
+/**
+ * Keep only the reload tokens whose paths are still open.
+ *
+ * Returns the original object when nothing needs dropping — the identity check
+ * is load-bearing, not an optimisation: this feeds a setState inside an effect,
+ * and returning a fresh object every run would re-render forever.
+ */
+export function pruneReloadTokens(
+  tokens: Record<string, number>,
+  openPaths: readonly string[],
+): Record<string, number> {
+  const open = new Set(openPaths);
+  const keys = Object.keys(tokens);
+  if (keys.every((key) => open.has(key))) return tokens;
+  const next: Record<string, number> = {};
+  for (const key of keys) {
+    if (open.has(key)) next[key] = tokens[key];
+  }
+  return next;
+}
 export type FileTab = {
   id: string;
   path: string | null;
@@ -62,6 +111,8 @@ type UseFileSessionResult = {
   loadFile: (path: string, options?: LoadFileOptions) => Promise<void>;
   /** Open a non-text file (image / pdf / html) as a read-only viewer tab. */
   openViewerTab: (path: string) => void;
+  /** Per-path counter bumped when a viewer tab's file changes on disk. */
+  viewerReloadTokens: Record<string, number>;
   loadDemo: () => void;
   saveNow: (path: string, content: string) => Promise<void>;
   /** Picks save location + writes. Returns the chosen path (or null if cancelled). */
@@ -69,7 +120,9 @@ type UseFileSessionResult = {
   /** Discard buffer, leave activePath null. Accepts optional initial text for OS-drop. */
   startNewBuffer: (initial?: string) => void;
   /** Load any file as plain text, bypassing extension validation. */
-  loadPlainTextFile: (path: string) => Promise<void>;
+  /** Load any file as plain text. `replaceExisting` converts an already-open
+   *  viewer tab for the same path into a source tab instead of no-opping. */
+  loadPlainTextFile: (path: string, options?: { replaceExisting?: boolean }) => Promise<void>;
   dirty: boolean;
 };
 
@@ -90,6 +143,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     [],
   );
   const [externalReloadToast, setExternalReloadToast] = useState(false);
+  const reloadToastTimer = useRef<number | null>(null);
   const [externalConflict, setExternalConflict] = useState<string | null>(null);
   const loadSeq = useRef(0);
   const tabSeq = useRef(1);
@@ -109,6 +163,10 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
   const savedRef = useRef(savedContent);
   const activePathRef = useRef(activePath);
 
+  // Bumped per viewer-tab path when its file changes on disk — FileView keys
+  // its read on this, since a rendered image/pdf has no text buffer to diff.
+  const [viewerReloadTokens, setViewerReloadTokens] = useState<Record<string, number>>({});
+
   useEffect(() => {
     sourceRef.current = source;
   }, [source]);
@@ -118,6 +176,23 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
   useEffect(() => {
     activePathRef.current = activePath;
   }, [activePath]);
+
+  // Every open tab is watched, not just the focused one: a background tab that
+  // silently went stale is the case where a later save clobbers an agent's work.
+  const watchedTabPaths = tabs
+    .map((tab) => tab.path)
+    .filter((path): path is string => path != null);
+  const watchedTabPathsKey = watchedTabPaths.join("\0");
+
+  // Drop reload tokens for paths that are no longer open. Reconciled against
+  // the open set rather than hooked into closeTab, because a tab can leave the
+  // set several ways (close, close-others, replaced blank buffer) and a token
+  // map that only ever grows is a slow leak across a long session.
+  useEffect(() => {
+    setViewerReloadTokens((prev) => pruneReloadTokens(prev, watchedTabPathsKey.split("\0")));
+    // watchedTabPaths is a fresh array each render; the joined key is the stable dep
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedTabPathsKey]);
 
   const makeTabId = useCallback(() => {
     const next = tabSeq.current;
@@ -163,7 +238,29 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     )));
   }, [activeTabId]);
 
-  const dismissExternalReload = useCallback(() => setExternalReloadToast(false), []);
+  const dismissExternalReload = useCallback(() => {
+    if (reloadToastTimer.current !== null) {
+      window.clearTimeout(reloadToastTimer.current);
+      reloadToastTimer.current = null;
+    }
+    setExternalReloadToast(false);
+  }, []);
+
+  /** Show the reload toast for a full window, restarting rather than stacking.
+   *  Back-to-back external changes previously each queued their own timeout, so
+   *  the first to expire cleared a toast the later ones had just raised. */
+  const flashExternalReload = useCallback(() => {
+    if (reloadToastTimer.current !== null) window.clearTimeout(reloadToastTimer.current);
+    setExternalReloadToast(true);
+    reloadToastTimer.current = window.setTimeout(() => {
+      reloadToastTimer.current = null;
+      setExternalReloadToast(false);
+    }, RELOAD_TOAST_MS);
+  }, []);
+
+  useEffect(() => () => {
+    if (reloadToastTimer.current !== null) window.clearTimeout(reloadToastTimer.current);
+  }, []);
 
   const acceptExternalChange = useCallback((fresh: string) => {
     setSource(fresh);
@@ -375,10 +472,20 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     }
   }, [activeTabId, titleForPath]);
 
-  const loadPlainTextFile = useCallback(async (path: string) => {
+  const loadPlainTextFile = useCallback(async (
+    path: string,
+    options: { replaceExisting?: boolean } = {},
+  ) => {
     const seq = ++loadSeq.current;
     const existing = snapshotActiveTab(tabs).find((tab) => tab.path === path);
-    if (existing) {
+    // `replaceExisting` is for converting a viewer tab into a source tab — the
+    // tab for this path already exists and holds no text, so the plain
+    // "already open, just focus it" path would return without ever loading the
+    // content. Closing the tab first doesn't help: this callback closes over
+    // `tabs` from the current render, so the tab it was told to forget is
+    // still in that array and it early-returns anyway. Load into the tab
+    // instead of racing its removal.
+    if (existing && !options.replaceExisting) {
       if (activePathRef.current !== path) switchTab(existing.id);
       return;
     }
@@ -394,16 +501,26 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
       setSource(content);
       setSavedContent(content);
       setActivePath(path);
-      const tab: FileTab = {
-        id: makeTabId(),
-        path,
-        title: titleForPath(path),
-        source: content,
-        savedContent: content,
-        waitMarkers: [],
-      };
-      setTabs((prev) => [...snapshotActiveTab(prev), tab]);
-      setActiveTabId(tab.id);
+      if (existing) {
+        // in-place conversion — keep the tab, give it the file's text
+        setTabs((prev) => prev.map((tab) => (
+          tab.id === existing.id
+            ? { ...tab, source: content, savedContent: content }
+            : tab
+        )));
+        setActiveTabId(existing.id);
+      } else {
+        const tab: FileTab = {
+          id: makeTabId(),
+          path,
+          title: titleForPath(path),
+          source: content,
+          savedContent: content,
+          waitMarkers: [],
+        };
+        setTabs((prev) => [...snapshotActiveTab(prev), tab]);
+        setActiveTabId(tab.id);
+      }
       setSaveStatus("idle");
       setRecentFiles((prev) => [path, ...prev.filter((p) => p !== path)].slice(0, 8));
     } catch (err) {
@@ -422,28 +539,61 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     return target;
   }, [activePath, rootPath, source, saveNow, setActivePath]);
 
-  const handleExternalChange = useCallback(async () => {
-    if (!activePath) return;
-    try {
-      const fresh = await readMarkdown(activePath);
-      if (fresh === sourceRef.current) return;
-      const isDirty = sourceRef.current !== savedRef.current;
-      if (!isDirty) {
-        setSource(fresh);
-        setSavedContent(fresh);
-        setTabs((prev) => prev.map((tab) => (
-          tab.id === activeTabId ? { ...tab, source: fresh, savedContent: fresh } : tab
-        )));
-        setExternalReloadToast(true);
-        window.setTimeout(() => setExternalReloadToast(false), 2400);
-      } else {
-        setExternalConflict(fresh);
-      }
-    } catch (err) {
-      console.error("marka.md: external change reload failed", err);
+  const handleExternalChange = useCallback(async (path: string) => {
+    // Viewer tabs hold no text buffer — bump a token and let FileView re-read.
+    if (fileViewerKindForPath(path) !== null) {
+      setViewerReloadTokens((prev) => ({ ...prev, [path]: (prev[path] ?? 0) + 1 }));
+      return;
     }
-  }, [activePath, activeTabId]);
-  useFileWatcher(activePath, handleExternalChange);
+    try {
+      const fresh = await readMarkdown(path);
+
+      // Every input to the decision is read AFTER the await, deliberately. The
+      // user can switch tabs while the read is in flight, and setSource /
+      // setSavedContent below write to whichever tab is focused *now* — so
+      // deciding "is this the active file?" beforehand would pour this file's
+      // content into a different tab, and the next save would commit it to
+      // that file on disk.
+      const action = resolveExternalChange({
+        path,
+        activePath: activePathRef.current,
+        fresh,
+        source: sourceRef.current,
+        savedContent: savedRef.current,
+      });
+
+      if (action === "none") return;
+
+      if (action === "background") {
+        // Adopt disk content outright. Unsaved edits in a tab you aren't
+        // looking at are discarded — deliberate, so an agent's work is never
+        // silently clobbered by a stale buffer on a later save. Flip this
+        // branch to a per-tab conflict flag if that trade stops paying.
+        setTabs((prev) => prev.map((tab) => (
+          tab.path === path && tab.source !== fresh
+            ? { ...tab, source: fresh, savedContent: fresh }
+            : tab
+        )));
+        return;
+      }
+
+      if (action === "conflict") {
+        setExternalConflict(fresh);
+        return;
+      }
+
+      setSource(fresh);
+      setSavedContent(fresh);
+      // matched by path, not by active-tab id — paths are unique across tabs
+      setTabs((prev) => prev.map((tab) => (
+        tab.path === path ? { ...tab, source: fresh, savedContent: fresh } : tab
+      )));
+      flashExternalReload();
+    } catch (err) {
+      console.error("marka.md: external change reload failed", path, err);
+    }
+  }, []);
+  useFileWatcher(watchedTabPaths, handleExternalChange);
 
   // mount-only: restore last open file from persisted activePath.
   useEffect(() => {
@@ -505,6 +655,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
     acceptExternalChange,
     loadFile,
     openViewerTab,
+    viewerReloadTokens,
     loadDemo,
     saveNow,
     saveAs,

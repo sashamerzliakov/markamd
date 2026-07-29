@@ -42,3 +42,6 @@ src-tauri/.cargo/config.toml
 *.sln
 *.sw?
 marketing.md
+
+# generated verification fixtures (scripts/local/make-fixtures.sh rebuilds them)
+test-fixtures/
