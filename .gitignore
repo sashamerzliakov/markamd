@@ -50,3 +50,6 @@ test-fixtures/
 docs/fork-pr-body.md
 
 dist-release/
+
+# local session scaffolding, not for the public fork
+handoff.md

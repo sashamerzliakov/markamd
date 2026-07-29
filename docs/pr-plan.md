@@ -143,12 +143,30 @@ real fix.
 
 1. ✅ Run the manual checklist on the fork build.
 2. ✅ Land the fork work — PR #1, merged as `d312b49`.
-3. **Next:** version the fork and cut its first release, so the install link
-   has something honest to point at.
-4. Submit upstream PR 1 — smallest, most likely to land, and it earns the
-   standing to propose PR 3 later.
+3. ✅ Version the fork and cut its first release — `v1.6.2-fork.1`, with the
+   install link and badges repointed at this repo.
+4. **Next:** submit upstream PR 1. Built and installed as `marka.md-PR.app`
+   for side-by-side verification against stock upstream (`marka.md-OG.app`);
+   awaiting a manual pass over the three repro cases before it goes out.
 5. Build upstream PR 2 from the merged fork work.
 6. Build upstream PR 3 last, referencing PR 1's defects as evidence.
 
 The upstream branch is still local and unsubmitted; upstream is a third party's
 repo, so nothing goes there without an explicit call.
+
+---
+
+## Queued follow-ups
+
+Not from the merged work — all pre-existing or deferred, none urgent. Recorded
+here so they don't only exist in a chat log.
+
+| Item | Why it waits |
+|---|---|
+| Viewer size cap is 512 MB, read into the JS heap | The real fix is streaming via `convertFileSrc`, not a smaller number. Worth doing, and it would fix upstream's unbounded read too |
+| `checkBinaryAndSize` reads the whole file (≤5 MB) to inspect 8 KB | A bounded read needs `open()` + `read()` plus a new `fs:allow-open` capability. Pre-existing; upstream has it too |
+| Sidebar shows a generic text icon for every non-CSV file | Pre-existing, predates this work (`bea24fb`). More visible now the opaque set is larger |
+| CSV/TSV parses the whole file for a 200-row preview | Early termination changes how `totalRows` is reported, so not a drive-by fix |
+| `.ogv` / `.ogg` / `.oga` unverified | No Theora or Vorbis encoder locally to generate a fixture |
+| 7 extensions declared without fixtures | `.heif` `.apng` `.xlsx` `.pptx` `.key` `.pages` `.numbers` — share code paths with covered formats, never opened individually |
+| Two build worktrees on disk | `marka-og` and `marka-pr`, ~1.3 GB each. `git worktree remove` when the side-by-side comparison is done |
