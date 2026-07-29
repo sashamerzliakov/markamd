@@ -23,12 +23,18 @@ Custom enhancements live on the `custom` branch; `upstream` remote tracks the or
 
 ## Files touched by the customisations
 
-- `src/app.tsx` — view modes + cycling, zoom state, file-viewer state, folder-favourite state, shortcuts, render branches
-- `src/components/editor/file-view.tsx` — new component (image / pdf / html viewer)
+- `src/app.tsx` — view modes + ⌘E cycling/source toggle, zoom state, file-viewer state, per-path source overrides, folder-favourite state, shortcuts, render branches
+- `src/components/editor/file-view.tsx` — new component (image / pdf / video / audio viewer), size guard, reload token
+- `src/components/editor/editor.tsx` — minimal-diff dispatch so external reloads keep the cursor
+- `src/components/editor/preview.tsx`, `csv-preview.tsx` — `.tsv` delimiter threading
 - `src/components/files/folder-node.tsx`, `favorites.tsx`, `sidebar.tsx` — folder favourite star + folder rows in Favourites
-- `src/lib/media-assets.ts`, `src/lib/files.ts`, `src/lib/storage.ts`, `src/lib/index.ts` — viewer-kind + plain-text-edit + isDirectory helpers, storage key
+- `src/hooks/use-file-watcher.ts` — multi-path watcher registry (every open tab)
+- `src/hooks/use-file-session.ts` — external-change resolution, reload tokens, in-place viewer→source conversion
+- `src/lib/media-assets.ts`, `src/lib/files.ts`, `src/lib/csv.ts`, `src/lib/storage.ts`, `src/lib/index.ts` — format tables, text-as-default classification + binary sniff, preview-renderer predicate, `.tsv`, isDirectory helper, storage key
 - `src/styles/editor/panes.css`, `src/styles/files/sidebar.css` — solo-pane, viewer, folder-star styles
-- `src-tauri/capabilities/default.json` — webview zoom permission
+- `src-tauri/capabilities/default.json` — webview zoom permission, dotenv fs scope
+- `tests/` — classification, watcher-controller lifecycle, external-change resolution, reload-token pruning
+- `docs/file-format-checklist.md`, `scripts/local/make-fixtures.sh` — the manual verification pass and its fixtures
 
 ## Performance fixes over upstream
 

@@ -1,5 +1,11 @@
 # PR plan — upstream and fork
 
+> **Status, 2026-07-29.** Fork track: [PR #1](https://github.com/sashamerzliakov/markamd/pull/1)
+> **merged** into `custom` (`d312b49`) — the file-type model, live update, the
+> ⌘E unification and the UI fixes are all landed. Upstream track: PR 1 is built
+> and tested locally on `fix/preview-overlay-hardening` (`2a2c907`) but **not
+> submitted**; PRs 2 and 3 are not built.
+
 Two tracks running in parallel:
 
 - **Upstream** → `mattenarle10/markamd`. Three PRs, ordered by landability.
@@ -94,36 +100,31 @@ not. Concede `.rtf` — their launcher card beats our raw-markup editing.
 Same work, but the fork is where it actually ships, so it gets released rather
 than merely merged.
 
-### Fork PR A — `feat/live-update` → `custom`
+### ✅ Merged — PR #1, `feat/file-types-and-live-update` → `custom`
 
-Auto-refresh of open files, plus the ⌘E rename.
+Landed as one PR rather than the three planned below. `app.tsx` and
+`file-view.tsx` carry interleaved changes from every area, so splitting would
+have meant either fake separation or intermediate commits that don't build.
+Five commits, 25 files, +1739 / −126.
 
-- Multi-path watcher: every open tab watched, per-path coalescing
-- Viewer tabs reload via a per-path token (images/PDF/SVG)
-- Minimal-diff editor dispatch so the cursor holds position
-- `resolveExternalChange()` extracted pure — the shape prevents the
-  tab-switch race from being reintroduced
-- ⌘⇧B → ⌘E for view cycling
-
-### Fork PR B — `feat/file-types` → `custom`
-
-Text-as-default classification, format breadth, `.tsv`, viewer-tab routing.
-
-### Fork PR C — `fix/ui-regressions` → `custom`
-
-Four fixes, three of which only a manual pass would have caught:
-
-| Fix | Found by |
+| Area | Landed |
 |---|---|
-| Folder star vanished when hovered (CSS specificity) | Sasha, using it |
-| HTML live preview and CSV table view silently disabled | Sasha, using it |
-| SVG "edit as text" had no visible effect — never worked since `ae45afa` | Sasha, using it |
-| Reload-token leak, tab-switch race, toast timer stacking | Gemini cross-review |
+| File types | Text-as-default + NUL sniff, format breadth, `.tsv`, `.rtf` → launcher |
+| Live update | Multi-path watcher, viewer reload tokens, minimal-diff dispatch, `resolveExternalChange()` |
+| Shortcut | ⌘⇧B → ⌘E, unified to mean "show me the editable form" |
+| Fixes | Folder star, HTML/CSV preview, SVG edit-as-text (both halves), token leak, toast timers, watcher key |
 
-### Fork release
+Verification: manual checklist passed, 69/69 automated fixture checks, 92 unit
+tests, four rounds of cross-model review.
 
-Cut a GitHub release on `sashamerzliakov/markamd` once A–C are merged and the
-manual checklist has been run.
+### Fork release — next step
+
+PR #1 is merged and the checklist has been run, so the remaining gate is the
+release itself. Until one exists, the README's install link and release badges
+point at *upstream's* releases: anyone downloading from this repo's front page
+gets Matt's app without any of the features listed above it. The README now
+says so explicitly and gives the build-from-source path, but a release is the
+real fix.
 
 - **Version:** upstream is at 1.7.1 and we are still reporting 1.6.2. Version
   the fork independently so the two can't be confused — `1.7.1-fork.1` reads
@@ -131,18 +132,23 @@ manual checklist has been run.
 - **Artefacts:** macOS arm64 `.dmg`. The build script disables updater
   artefacts (they need upstream's signing key), so the release is
   download-and-install, not auto-updating.
-- **Gate:** `docs/file-format-checklist.md` run end to end first. Three
-  regressions this session were invisible to 92 unit tests and a type check.
+- **Gate:** ✅ `docs/file-format-checklist.md` run end to end and passed.
+  Worth keeping as a gate on every future release — three regressions in this
+  cycle were invisible to 92 unit tests and a clean type check, and all three
+  were caught by opening the app.
 
 ---
 
 ## Order of operations
 
-1. Push PR 1, open it upstream. Smallest, most likely to land, earns the right
-   to propose PR 3 later.
-2. Run the manual checklist on the fork build.
-3. Land fork PRs A–C, cut the fork release.
-4. Build upstream PR 2 from the merged fork work.
-5. Build upstream PR 3 last, referencing PR 1's defects as evidence.
+1. ✅ Run the manual checklist on the fork build.
+2. ✅ Land the fork work — PR #1, merged as `d312b49`.
+3. **Next:** version the fork and cut its first release, so the install link
+   has something honest to point at.
+4. Submit upstream PR 1 — smallest, most likely to land, and it earns the
+   standing to propose PR 3 later.
+5. Build upstream PR 2 from the merged fork work.
+6. Build upstream PR 3 last, referencing PR 1's defects as evidence.
 
-Nothing is pushed to GitHub until you say so — every branch above is local.
+The upstream branch is still local and unsubmitted; upstream is a third party's
+repo, so nothing goes there without an explicit call.
