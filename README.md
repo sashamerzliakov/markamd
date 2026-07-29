@@ -33,15 +33,28 @@ built openly with AI assistance (Claude) — i find the problems, direct the wor
 
 the `custom` branch adds, on top of upstream:
 
-- **⌘E view cycling** — split → editor-only → preview-only → split
-- **in-app file viewer** — images and PDFs open as read-only tabs
+- **text-first file handling** — media formats and opaque binaries are enumerated; *everything else* opens straight in the editor. no extension allowlist to fall off the end of, so `.tf`, `.nix`, `.tex`, `Makefile`, `Dockerfile` and friends all just work. a NUL-byte sniff refuses actual binaries with a reason instead of opening them as mojibake
+- **live update** — every open tab tracks its file on disk, not just the focused one. an agent rewriting a file you're reading updates it in place, cursor and scroll position intact
+- **files open as tabs, not modals** — images (incl. heic / avif / tiff), PDFs, video and audio render in a tab; the file you were working on stays open behind it. office formats and archives get a launcher card
+- **⌘E — show me the editable form** — cycles panes on markdown / html / csv, flips a rendered svg to its source and back
 - **editable html with live preview** — edit left, rendered pane right, like markdown
-- **more editable file types** — js / css / py / json / log open straight into the editor
+- **dotenv files are visible** — `.env` and `.env.*` show in the explorer and open like any other text file
 - **folder favourites** — star a folder, click it to open as a workspace root
 - **app-wide zoom** — ⌘= / ⌘+ / ⌘- / ⌘0, persisted (merged upstream in [#123](https://github.com/mattenarle10/markamd/pull/123))
 - **perf: non-scanning folder watchers** — fixes a startup / add-folder freeze on large folders (merged upstream in [#122](https://github.com/mattenarle10/markamd/pull/122))
 
 details and the fork workflow live in [CUSTOM.md](./CUSTOM.md). generalisable pieces get PRed upstream; the personal ones stay here.
+
+**getting this build:** the release badges and the install link below point at
+[upstream's releases](https://github.com/mattenarle10/markamd/releases/latest) — downloading those gives you Matt's app, not this fork. to get the features listed above, build from source:
+
+```bash
+git clone https://github.com/sashamerzliakov/markamd.git
+cd markamd && bun install
+scripts/local/build-install.sh   # macOS — builds and copies to /Applications
+```
+
+the build script disables updater artifacts (they need upstream's signing key), so this build won't auto-update. decline any in-app update prompt — it would replace the fork with upstream's binary.
 
 ## what you get
 
