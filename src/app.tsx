@@ -42,8 +42,8 @@ import {
   fileViewerKindForPath,
   isDirectoryPath,
   isFilesystemRoot,
+  hasPreviewRenderer,
   isHtmlPath,
-  isPlainTextEditPath,
   isSupportedTextPath,
   markdownInsertion,
   normalizeProseFontFamily,
@@ -143,6 +143,7 @@ export function App() {
     setExternalConflict,
     loadFile,
     openViewerTab,
+    viewerReloadTokens,
     loadDemo,
     saveNow,
     saveAs: saveAsCore,
@@ -421,8 +422,12 @@ export function App() {
   const toggleEditorOnly = useCallback(() => {
     setViewMode((current) => (current === "editor" ? "split" : "editor"));
   }, [setViewMode]);
-  // ⌘⇧B cycles the workspace panes: split → editor-only → preview-only → split.
+  // ⌘E cycles the workspace panes: split → editor-only → preview-only → split.
   // Reading mode re-enters the cycle at editor-only.
+  // Not ⌘⇧B (its original chord) and never ⌘V: `mod` collapses to Ctrl off
+  // macOS, so mod+v would be the paste key on Windows and Linux, and
+  // useShortcuts has no editable-context guard — it would preventDefault paste
+  // inside the editor. ⌘E is clear of CodeMirror's default keymap.
   const cycleViewMode = useCallback(() => {
     setViewMode((current) => {
       if (current === "split" || current === "reading") return "editor";
@@ -433,31 +438,32 @@ export function App() {
 
   useAppZoom();
 
+  // Paths the user asked to see as source instead of rendered ("edit as text"
+  // on the SVG viewer). Per-path rather than per-extension so opening one SVG
+  // as source doesn't silently change how every other SVG opens, and cleared
+  // when the tab closes so reopening the file shows the rendered view again.
+  const [textOverrides, setTextOverrides] = useState<ReadonlySet<string>>(() => new Set());
+
+  const openAsSource = useCallback((path: string) => {
+    setTextOverrides((prev) => new Set(prev).add(path));
+  }, []);
+
   // In-app file viewer (images / pdf / html) — such files open as viewer tabs;
   // when the active tab's path is viewable, FileView renders instead of the editor.
-  const activeViewerKind = activePath ? fileViewerKindForPath(activePath) : null;
+  // The override is checked here because without it "edit as text" had no
+  // visible effect: the path still classified as an image, so FileView simply
+  // re-rendered over the editor the moment the text tab opened.
+  const activeViewerKind = activePath && !textOverrides.has(activePath)
+    ? fileViewerKindForPath(activePath)
+    : null;
   // HTML files edit like markdown but preview through a sandboxed iframe.
   const activeIsHtml = activePath ? isHtmlPath(activePath) : false;
 
-  // Plain-text fallback files cannot render in preview, so they temporarily force editor-only
-  // without changing the user's persisted default view mode.
+  // Files with no preview renderer temporarily force editor-only, without
+  // changing the user's persisted default view mode.
   useEffect(() => {
-    if (!activePath) {
-      setPlainTextEditorOnly(false);
-      return;
-    }
-    const lower = activePath.toLowerCase();
-    if (lower.endsWith(".md") || lower.endsWith(".markdown") || lower.endsWith(".mdx")) {
-      setPlainTextEditorOnly(false);
-    } else if (isPlainTextEditPath(activePath)) {
-      // code files (js/css/py) are edit-only — the markdown preview is meaningless for them
-      setPlainTextEditorOnly(true);
-    } else if (extPrefs.current.get(getExt(activePath)) === "text") {
-      setPlainTextEditorOnly(true);
-    } else {
-      setPlainTextEditorOnly(false);
-    }
-  }, [activePath, getExt]);
+    setPlainTextEditorOnly(activePath ? !hasPreviewRenderer(activePath) : false);
+  }, [activePath]);
 
   // ⌘F only bound while reading — CM owns it in editor mode.
   const [findOpen, setFindOpen] = useState(false);
@@ -846,6 +852,15 @@ export function App() {
       return;
     }
     completeWaitSessions(tab.waitMarkers);
+    if (tab.path) {
+      const closingPath = tab.path;
+      setTextOverrides((prev) => {
+        if (!prev.has(closingPath)) return prev;
+        const next = new Set(prev);
+        next.delete(closingPath);
+        return next;
+      });
+    }
     closeTab(id);
   }, [closeTab, completeWaitSessions, tabs, t]);
 
@@ -956,7 +971,7 @@ export function App() {
         e.preventDefault();
         toggleEditorOnly();
       },
-      "mod+shift+b": (e: KeyboardEvent) => {
+      "mod+e": (e: KeyboardEvent) => {
         e.preventDefault();
         cycleViewMode();
       },
@@ -1202,12 +1217,14 @@ export function App() {
               {activeViewerKind && activePath ? (
                 <FileView
                   path={activePath}
+                  reloadToken={viewerReloadTokens[activePath] ?? 0}
                   onClose={() => handleCloseTab(activeTabId)}
                   onOpenAsText={(path) => {
-                    // svg: reopen as an editable plain-text tab; remember the
-                    // preference so the editor-only mode kicks in for it
-                    extPrefs.current.set(getExt(path), "text");
+                    // svg: reopen as an editable plain-text tab.
+                    // Order matters — handleCloseTab drops this path's override,
+                    // so the override has to be set after it, not before.
                     handleCloseTab(activeTabId);
+                    openAsSource(path);
                     void loadPlainTextFile(path);
                   }}
                 />

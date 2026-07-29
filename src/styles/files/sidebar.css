@@ -761,7 +761,9 @@
     background var(--dur-fast) var(--easing);
 }
 
-.mdv-tree__item:hover .mdv-tree__fav,
+/* folder stars opt out of item-level hover — they have their own reveal rules
+   below, so a descendant row's hover doesn't light up its ancestor's star */
+.mdv-tree__item:hover .mdv-tree__fav:not(.mdv-tree__fav--folder),
 .mdv-tree__fav:focus-visible,
 .mdv-tree__fav.is-fav {
   opacity: 1;
@@ -778,10 +780,6 @@
   /* row is ~26px tall (4px padding + ~18px content); star is 18px */
   top: 4px;
   transform: none;
-}
-
-.mdv-tree__item:hover .mdv-tree__fav--folder {
-  opacity: 0;
 }
 
 .mdv-tree__row--folder:hover ~ .mdv-tree__fav--folder,

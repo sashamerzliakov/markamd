@@ -71,6 +71,7 @@ export { estimateTokens, formatTokens } from "./bundle";
 export {
   CSV_PREVIEW_MAX_COLUMNS,
   CSV_PREVIEW_MAX_ROWS,
+  csvDelimiterForPath,
   isCsvPath,
   parseCsvPreview,
   type CsvPreview,
@@ -96,6 +97,7 @@ export {
   pathExists,
   isDirectoryPath,
   isEnvPath,
+  hasPreviewRenderer,
   isHtmlPath,
   isMarkdownPath,
   isPlainTextEditPath,

@@ -1,4 +1,10 @@
-const CSV_EXT = /\.csv$/i;
+const CSV_EXT = /\.(csv|tsv)$/i;
+const TSV_EXT = /\.tsv$/i;
+
+/** Field delimiter for a delimited-text path — tab for .tsv, comma otherwise. */
+export function csvDelimiterForPath(path: string): string {
+  return TSV_EXT.test(path) ? "\t" : ",";
+}
 
 export const CSV_PREVIEW_MAX_ROWS = 200;
 export const CSV_PREVIEW_MAX_COLUMNS = 20;
@@ -16,7 +22,7 @@ export function isCsvPath(path: string): boolean {
   return CSV_EXT.test(path);
 }
 
-function parseCsvRows(source: string): string[][] {
+function parseCsvRows(source: string, delimiter = ","): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -42,7 +48,7 @@ function parseCsvRows(source: string): string[][] {
       quoted = true;
       continue;
     }
-    if (ch === ",") {
+    if (ch === delimiter) {
       row.push(field);
       field = "";
       continue;
@@ -71,8 +77,9 @@ export function parseCsvPreview(
   source: string,
   maxRows = CSV_PREVIEW_MAX_ROWS,
   maxColumns = CSV_PREVIEW_MAX_COLUMNS,
+  delimiter = ",",
 ): CsvPreview {
-  const parsed = parseCsvRows(source);
+  const parsed = parseCsvRows(source, delimiter);
   const totalColumns = parsed.reduce((max, row) => Math.max(max, row.length), 0);
   const headerRow = parsed[0] ?? [];
   const headers = Array.from({ length: Math.min(totalColumns, maxColumns) }, (_, i) => {

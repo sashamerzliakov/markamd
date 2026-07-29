@@ -8,7 +8,7 @@ import { extensionFromMarkdownAssetSrc, markdownMediaAssetForExtension } from "@
 import inspectUrl from "@/assets/mascot/inspect.png";
 import { renderMermaidBlocks } from "@/lib/mermaid";
 import { decoratePlantUmlBlocks } from "@/lib/plantuml";
-import { basename, isCsvPath } from "@/lib";
+import { basename, csvDelimiterForPath, isCsvPath } from "@/lib";
 import { CsvPreview } from "./csv-preview";
 import {
   createDiagramViewer,
@@ -286,7 +286,11 @@ export function Preview({ source, filePath, onOpenPreviewWindow }: PreviewProps)
           </div>
         ) : null}
         {csvPreview ? (
-          <CsvPreview source={source} fileName={filePath ? basename(filePath) : undefined} />
+          <CsvPreview
+            source={source}
+            fileName={filePath ? basename(filePath) : undefined}
+            delimiter={filePath ? csvDelimiterForPath(filePath) : ","}
+          />
         ) : (
           <article
             ref={articleRef}

@@ -8,11 +8,20 @@ export type MarkdownMediaAsset = {
 const IMAGE_MIME: Record<string, string> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
+  jfif: "image/jpeg",
   png: "image/png",
+  apng: "image/apng",
   gif: "image/gif",
   webp: "image/webp",
   svg: "image/svg+xml",
   bmp: "image/bmp",
+  avif: "image/avif",
+  ico: "image/x-icon",
+  // WebKit decodes these via the system codecs on Apple platforms
+  heic: "image/heic",
+  heif: "image/heif",
+  tif: "image/tiff",
+  tiff: "image/tiff",
 };
 
 const VIDEO_MIME: Record<string, string> = {
@@ -29,7 +38,13 @@ const AUDIO_MIME: Record<string, string> = {
   wav: "audio/wav",
   ogg: "audio/ogg",
   oga: "audio/ogg",
+  opus: "audio/ogg",
   flac: "audio/flac",
+  aac: "audio/aac",
+  // macOS-native containers WebKit plays through the system codecs
+  aiff: "audio/aiff",
+  aif: "audio/aiff",
+  caf: "audio/x-caf",
 };
 
 export function markdownMediaAssetForExtension(ext: string): MarkdownMediaAsset {
@@ -43,9 +58,26 @@ export function markdownMediaAssetForExtension(ext: string): MarkdownMediaAsset 
 
 export type FileViewerKind = "image" | "pdf" | "video" | "audio" | "external";
 
-// Binary formats with no in-app renderer — the viewer shows a launcher card
-// that opens them in the OS default app instead of an error toast.
-const EXTERNAL_APP_EXT = new Set(["doc", "docx", "xls", "xlsx", "ppt", "pptx"]);
+// Opaque binaries with no in-app renderer — the viewer shows a launcher card
+// that opens them in the OS default app instead of an error toast. Everything
+// NOT listed here (and not media) falls through to the editor as text, so this
+// set is what keeps known documents and archives out of a text buffer. The
+// NUL-byte sniff in files.ts is the general net for anything unlisted.
+const EXTERNAL_APP_EXT = new Set([
+  // word processing / spreadsheets / presentations
+  "doc", "docx", "docm", "dotx",
+  "xls", "xlsx", "xlsm", "xlsb",
+  "ppt", "pptx", "pptm",
+  "odt", "ods", "odp",
+  "key", "pages", "numbers",
+  "rtf", "epub",
+  // archives and disk images
+  "zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar", "dmg", "iso", "pkg",
+  // compiled / opaque payloads
+  "wasm", "class", "jar", "so", "dylib", "exe", "bin",
+  "sqlite", "sqlite3", "db",
+  "ttf", "otf", "woff", "woff2",
+]);
 
 /** Viewer kind for files rendered by the in-app file viewer, or null when the path isn't viewable.
  *  HTML is NOT a viewer kind — it opens editable with a live preview pane. */
